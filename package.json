@@ -21,6 +21,7 @@
     "@nx/vite": "20.4.6",
     "@nx/web": "20.4.6",
     "@nx/workspace": "20.4.6",
+    "@nxlv/python": "^20.6.2",
     "@swc-node/register": "~1.9.1",
     "@swc/cli": "~0.3.12",
     "@swc/core": "~1.5.7",

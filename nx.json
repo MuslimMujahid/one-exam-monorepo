@@ -34,6 +34,9 @@
       "options": {
         "targetName": "lint"
       }
+    },
+    {
+      "plugin": "@nxlv/python"
     }
   ],
   "generators": {
