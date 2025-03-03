@@ -1,0 +1,10 @@
+{
+  "name": "teacher-client-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/teacher-client-e2e/src",
+  "tags": [],
+  "implicitDependencies": ["teacher-client"],
+  "// targets": "to see all targets run: nx show project teacher-client-e2e --web",
+  "targets": {}
+}

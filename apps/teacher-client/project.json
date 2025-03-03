@@ -1,0 +1,16 @@
+{
+  "name": "teacher-client",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/teacher-client",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "apps/teacher-client/jest.config.ts"
+      }
+    }
+  }
+}
