@@ -1,3 +1,5 @@
+import { SharedComponent } from '@one-exam-monorepo/ui';
+
 export default function Index() {
   /*
    * Replace the elements below with your own.
@@ -12,7 +14,8 @@ export default function Index() {
             <h1>
               <span> Hello there, </span>
               Welcome teacher-client 👋
-            </h1>
+              <SharedComponent />
+              </h1>
           </div>
 
           <div id="hero" className="rounded">

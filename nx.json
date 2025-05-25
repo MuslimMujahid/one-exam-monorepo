@@ -85,7 +85,8 @@
       },
       "library": {
         "style": "tailwind",
-        "linter": "eslint"
+        "linter": "eslint",
+        "unitTestRunner": "vitest"
       }
     },
     "@nx/next": {
@@ -113,5 +114,10 @@
       "dependsOn": ["^build"]
     }
   },
-  "defaultProject": "student-client-electron"
+  "defaultProject": "student-client-electron",
+  "release": {
+    "version": {
+      "preVersionCommand": "pnpm dlx nx run-many -t build"
+    }
+  }
 }
