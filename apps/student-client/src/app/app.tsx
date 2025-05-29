@@ -1,9 +1,10 @@
-import NxWelcome from './nx-welcome';
+import { SharedComponent } from '@one-exam-monorepo/ui'
 
 export function App() {
   return (
     <div>
-      <NxWelcome title="one-exam-monorepo" />
+      <SharedComponent />
+      <div className="text-pink-500">This text should be pink</div>
     </div>
   );
 }

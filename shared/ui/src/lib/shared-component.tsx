@@ -1,3 +1,3 @@
 export const SharedComponent: React.FC = () => {
-    return <div>This is a shared Component</div>;
+    return <div className="text-purple-500">This text should be purple</div>;
 }
