@@ -15,7 +15,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@one-exam-monorepo/ui": ["shared/ui/src/index.ts"]
+      "@one-exam-monorepo/ui": ["shared/ui/src/index.ts"],
+      "@one-exam-monorepo/utils": ["shared/utils/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
