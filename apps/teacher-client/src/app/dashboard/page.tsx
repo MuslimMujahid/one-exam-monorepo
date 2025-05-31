@@ -1,11 +1,14 @@
+import Link from 'next/link';
+import { Button } from "@one-exam-monorepo/ui";
+
 export default function DashboardPage() {
   return (
     <div className="container mx-auto px-6 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow transition-colors">
-          Create New Exam
-        </button>
+        <Button asChild>
+          <Link href="/dashboard/create-exam">Create New Exam</Link>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
