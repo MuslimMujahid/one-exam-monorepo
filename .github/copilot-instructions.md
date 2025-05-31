@@ -31,3 +31,5 @@ You are assisting me with a large NX monorepo for an exam platform called "one-e
 
 - Frontend components: Prioritize reusability and adherence to existing UI patterns
 - Backend endpoints: Follow RESTful conventions used in core-backend
+- TypeScript: Ensure type safety and consistency across the codebase
+- TypeScript: Use interface for defining component props and types for anything else
