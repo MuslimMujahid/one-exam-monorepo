@@ -1,5 +1,6 @@
-import { Button } from "@one-exam-monorepo/ui";
+import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "@one-exam-monorepo/ui";
 import { auth0 } from "../../lib/auth0";
+import { UserIcon, LogOut, ChevronDown } from "lucide-react";
 
 export const metadata = {
   title: 'Dashboard',
@@ -36,9 +37,30 @@ export default async function DashboardLayout({
           <header className="bg-white shadow">
             <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
               <h1 className="text-xl font-semibold text-gray-900">One Exam</h1>
-              <Button asChild variant="outline">
-                <a href="/auth/logout">Log out</a>
-              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-2">
+                    {session.user?.name || 'User'} <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem asChild>
+                      <a href="/dashboard/profile" className="flex w-full items-center">
+                        <UserIcon className="mr-2 h-4 w-4" />
+                        <span>Profile</span>
+                      </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <a href="/auth/logout" className="flex w-full items-center">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
+                      </a>
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
           {children}

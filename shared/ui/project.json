@@ -9,6 +9,17 @@
       "options": {
         "packageRoot": "dist/{projectRoot}"
       }
+    },
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/shared/ui",
+        "main": "shared/ui/src/index.ts",
+        "tsConfig": "shared/ui/tsconfig.lib.json",
+        "assets": ["shared/ui/*.md"],
+        "externalDependencies": ["@radix-ui/*", "react", "react-dom"]
+      }
     }
   },
   "release": {
