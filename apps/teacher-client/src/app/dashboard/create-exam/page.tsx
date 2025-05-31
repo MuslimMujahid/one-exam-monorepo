@@ -182,7 +182,7 @@ export default function CreateExamPage() {
                     {' '}
                     <div className="flex justify-between items-start">
                       <h3 className="font-medium">Question {index + 1}</h3>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2">back
                         <Button
                           variant="ghost"
                           size="sm"

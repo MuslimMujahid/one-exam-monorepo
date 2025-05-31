@@ -4,6 +4,7 @@
   "sourceRoot": "shared/ui/src",
   "projectType": "library",
   "tags": ["scope:shared", "type:ui"],
+  "implicitDependencies": ["utils"],
   "targets": {
     "nx-release-publish": {
       "options": {
@@ -13,6 +14,12 @@
     "build": {
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
+      "dependsOn": [
+        {
+          "projects": "dependencies",
+          "target": "build"
+        }
+      ],
       "options": {
         "outputPath": "dist/shared/ui",
         "main": "shared/ui/src/index.ts",
