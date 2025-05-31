@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: one-exam-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: oneexam
+      POSTGRES_PASSWORD: oneexam
+      POSTGRES_DB: oneexam
+    volumes:
+      - one-exam-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oneexam"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  one-exam-postgres-data:
+    name: one-exam-postgres-data
