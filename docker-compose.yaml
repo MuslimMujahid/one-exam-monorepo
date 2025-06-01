@@ -8,6 +8,7 @@ services:
       POSTGRES_USER: oneexam
       POSTGRES_PASSWORD: oneexam
       POSTGRES_DB: oneexam
+      POSTGRES_HOST_AUTH_METHOD: md5
     volumes:
       - one-exam-postgres-data:/var/lib/postgresql/data
     healthcheck:
