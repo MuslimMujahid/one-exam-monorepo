@@ -13,6 +13,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const session = await auth0.getSession();
+  console.log('Session:', session);
 
   if (!session) {
     // Redirect to login if not authenticated
