@@ -8,10 +8,10 @@ import { APP_GUARD } from '@nestjs/core';
   imports: [PassportModule.register({ defaultStrategy: 'jwt' })],
   providers: [
     JwtStrategy,
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard,
-    }
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: RolesGuard,
+    // }
   ],
   exports: [PassportModule],
 })

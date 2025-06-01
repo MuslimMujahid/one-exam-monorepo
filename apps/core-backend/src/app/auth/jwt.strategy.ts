@@ -1,5 +1,10 @@
 // filepath: d:\projects\one-exam-monorepo\apps\core-backend\src\app\auth\jwt.strategy.ts
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  UnauthorizedException,
+  Request,
+} from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { passportJwtSecret } from 'jwks-rsa';
@@ -31,16 +36,44 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         cache: true,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
-        jwksUri: `https://dev-11yk6z0chl7sxhh7.us.auth0.com/.well-known/jwks.json`,
+        jwksUri: `https://${authConfig.domain}/.well-known/jwks.json`,
       }),
-      audience: 'https://dev-11yk6z0chl7sxhh7.us.auth0.com/api/v2/',
-      issuer: 'https://dev-11yk6z0chl7sxhh7.us.auth0.com',
+      audience: authConfig.audience,
+      issuer: `https://${authConfig.domain}/`,
       algorithms: ['RS256'],
+      passReqToCallback: true, // Add this to access the request
+      ignoreExpiration: false, // Ensure token is not expired
     });
+
+    // Log the actual configuration being used
+    this.logger.log('Initializing JWT Strategy with Auth0 configuration');
+
+    this.logger.log(`Using Auth0 domain: ${authConfig.domain}`);
+    this.logger.log(
+      `Using Auth0 audience: ${
+        authConfig.audience || 'Not specified (accepting any audience)'
+      }`
+    );
   }
 
-  validate(payload: JwtPayload): UserFromJwt {
-    this.logger.log(`JWT Payload received: ${JSON.stringify(payload)}`);
+  async validate(request: Request, payload: JwtPayload): Promise<UserFromJwt> {
+    console.log(`Validating JWT token...`);
+    this.logger.debug(`JWT validation attempt`);
+    this.logger.debug(
+      `Token received in Authorization header: ${request.headers}`
+    );
+    this.logger.debug(`JWT Payload received: ${JSON.stringify(payload)}`);
+
+    if (!payload) {
+      this.logger.error('JWT payload is empty or invalid');
+      throw new UnauthorizedException('Invalid token payload');
+    }
+
+    // Check for required fields
+    if (!payload.sub) {
+      this.logger.error('JWT payload missing required subject field');
+      throw new UnauthorizedException('Invalid token: missing subject');
+    }
 
     // Extract user information from the token payload
     const user: UserFromJwt = {
@@ -50,7 +83,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       roles: payload.roles || [],
     };
 
-    this.logger.debug(`Extracted user data: ${JSON.stringify(user)}`);
+    // Log the extracted user information
+    this.logger.debug(`Extracted user from JWT: ${JSON.stringify(user)}`);
+
     return user;
   }
 }

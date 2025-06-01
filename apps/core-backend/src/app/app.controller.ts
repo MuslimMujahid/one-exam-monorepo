@@ -2,6 +2,7 @@ import { Controller, Get, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { Roles } from './auth/roles.decorator';
+import { RolesGuard } from './auth/roles.guard';
 
 @Controller()
 export class AppController {
@@ -20,7 +21,7 @@ export class AppController {
   }
 
   // Route protected by authentication AND teacher role
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('teacher')
   @Get('teacher-only')
   getTeacherData() {
@@ -28,7 +29,7 @@ export class AppController {
   }
 
   // Route protected by authentication AND admin role
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Get('admin-only')
   getAdminData() {
@@ -36,7 +37,7 @@ export class AppController {
   }
 
   // Route that requires multiple roles (either one is sufficient)
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'teacher')
   @Get('staff-only')
   getStaffData() {
