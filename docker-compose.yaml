@@ -17,6 +17,24 @@ services:
       timeout: 5s
       retries: 5
 
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: one-exam-ngrok
+    restart: unless-stopped
+    command:
+      - "start"
+      - "--all"
+      - "--config"
+      - "/etc/ngrok.yml"
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml
+    ports:
+      - "4040:4040"
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    depends_on:
+      - postgres
+
 volumes:
   one-exam-postgres-data:
     name: one-exam-postgres-data
