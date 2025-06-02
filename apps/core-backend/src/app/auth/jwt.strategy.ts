@@ -36,7 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(_, payload: JwtPayload): UserFromJwt {
+  validate(payload: JwtPayload): UserFromJwt {
     if (!payload) {
       this.logger.error('JWT payload is empty or invalid');
       throw new UnauthorizedException('Invalid token payload');

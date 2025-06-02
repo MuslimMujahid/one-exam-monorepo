@@ -28,21 +28,11 @@ export class AppController {
     return { message: 'This data is for teachers only' };
   }
 
-  // Route protected by authentication AND admin role
+  // Route protected by authentication AND student role
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  @Get('admin-only')
-  getAdminData() {
-    return { message: 'This data is for administrators only' };
-  }
-
-  // Route that requires multiple roles (either one is sufficient)
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'teacher')
-  @Get('staff-only')
-  getStaffData() {
-    return {
-      message: 'This data is for staff members only (admin or teacher)',
-    };
+  @Roles('student')
+  @Get('student-only')
+  getStudentData() {
+    return { message: 'This data is for students only' };
   }
 }
