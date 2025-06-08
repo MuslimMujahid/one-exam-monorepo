@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@one-exam-monorepo/ui';
@@ -8,28 +8,32 @@ import ExamForm from '../../../components/exams/ExamForm';
 import QuestionCreator, {
   Question,
 } from '../../../components/exams/QuestionCreator';
+import { useExamStore } from '../../../stores/examStore';
 
-type ExamSettings = {
-  title: string;
-  description: string;
-  startTime: string;
-  duration: number; // in minutes
-  examCode: string;
-};
-
-export default function CreateExamPage() {
-  const [activeTab, setActiveTab] = useState('settings');
-  const [examSettings, setExamSettings] = useState<ExamSettings>({
-    title: '',
-    description: '',
-    startTime: '',
-    duration: 60, // minutes
-    examCode: generateRandomCode(),
-  });
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
-  const [showQuestionForm, setShowQuestionForm] = useState(false);
-  const [showScrollFab, setShowScrollFab] = useState(false);
+export default function CreateExamPage() {  const {
+    activeTab,
+    setActiveTab,
+    examSettings,
+    setExamSettings,
+    questions,
+    addQuestion,
+    updateQuestion,
+    removeQuestion,
+    editingQuestion,
+    setEditingQuestion,
+    showQuestionForm,
+    setShowQuestionForm,
+    showScrollFab,
+    setShowScrollFab,
+    hasUnsavedChanges,
+    markAsSaved,
+    getChangedData,
+    initializeExam,
+  } = useExamStore();
+  // Initialize the store when component mounts
+  useEffect(() => {
+    initializeExam();
+  }, [initializeExam]);
 
   // Effect to detect scroll position and show/hide the FAB
   useEffect(() => {
@@ -46,59 +50,80 @@ export default function CreateExamPage() {
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [activeTab, showQuestionForm]);
+  }, [activeTab, showQuestionForm, setShowScrollFab]);
 
   useEffect(() => {
-    if (questions.length == 0) {
+    if (questions.length === 0) {
       setShowQuestionForm(true);
     }
-  }, [questions])
-
-  function generateRandomCode() {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-  }
-
-  const handleExamSettingsChange = (settings: Partial<ExamSettings>) => {
-    setExamSettings({ ...examSettings, ...settings });
-  };
+  }, [questions, setShowQuestionForm]);
 
   const handleAddQuestion = (question: Question) => {
-    setQuestions([...questions, { ...question, id: Date.now().toString() }]);
-    setShowQuestionForm(false);
+    addQuestion(question);
   };
+
   const handleEditQuestion = (question: Question) => {
     setEditingQuestion(question);
-    setShowQuestionForm(true);
     // Automatically scroll to the top of the page to show the edit form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleUpdateQuestion = (updatedQuestion: Question) => {
-    setQuestions(
-      questions.map((q) => (q.id === updatedQuestion.id ? updatedQuestion : q))
-    );
-    setEditingQuestion(null);
-    setShowQuestionForm(false);
+    updateQuestion(updatedQuestion);
   };
 
   const handleRemoveQuestion = (questionId: string) => {
-    setQuestions(questions.filter((q) => q.id !== questionId));
+    removeQuestion(questionId);
   };
 
   const handleCancelEdit = () => {
     setEditingQuestion(null);
-    setShowQuestionForm(false);
   };
 
-  const handleSaveExam = () => {
-    // In a real implementation, this would save to an API
-    console.log('Saving exam:', { examSettings, questions });
-    alert('Exam created successfully!');
+  const handleSaveExam = async () => {
+    try {
+      // Get only the changed data for efficient API calls
+      const changes = getChangedData();
+
+      console.log('Saving exam changes:', changes);
+      console.log('Full exam data:', { examSettings, questions });
+
+      // In a real implementation, you would send only the changes to the API
+      // Example API call structure:
+      // if (changes.examSettings) {
+      //   await updateExamSettings(examId, changes.examSettings);
+      // }
+      // if (changes.questions) {
+      //   if (changes.questions.added.length > 0) {
+      //     await addQuestions(examId, changes.questions.added);
+      //   }
+      //   if (changes.questions.updated.length > 0) {
+      //     await updateQuestions(examId, changes.questions.updated);
+      //   }
+      //   if (changes.questions.removed.length > 0) {
+      //     await removeQuestions(examId, changes.questions.removed);
+      //   }
+      // }
+
+      // Mark as saved in the store
+      markAsSaved();
+
+      alert('Exam created successfully!');
+    } catch (error) {
+      console.error('Error saving exam:', error);
+      alert('Error saving exam. Please try again.');
+    }
   };
   return (
-    <div className="container mx-auto py-8 px-4 max-w-5xl">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Create New Exam</h1>
+    <div className="container mx-auto py-8 px-4 max-w-5xl">      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold">Create New Exam</h1>
+          {hasUnsavedChanges && (
+            <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+              Unsaved changes
+            </span>
+          )}
+        </div>
         <Link href="/dashboard">
           <Button variant="outline" className="flex items-center gap-2">
             <svg
@@ -142,12 +167,10 @@ export default function CreateExamPage() {
             Questions ({questions.length})
           </button>
         </nav>
-      </div>
-
-      {activeTab === 'settings' ? (
+      </div>      {activeTab === 'settings' ? (
         <ExamForm
           examSettings={examSettings}
-          onChange={handleExamSettingsChange}
+          onChange={setExamSettings}
         />
       ) : (
         <div>
@@ -182,7 +205,7 @@ export default function CreateExamPage() {
                     {' '}
                     <div className="flex justify-between items-start">
                       <h3 className="font-medium">Question {index + 1}</h3>
-                      <div className="flex space-x-2">back
+                      <div className="flex space-x-2">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -271,9 +294,7 @@ export default function CreateExamPage() {
       <div className="mt-12 flex justify-end space-x-4">
         <Button variant="outline">Cancel</Button>
         <Button onClick={handleSaveExam}>Create Exam</Button>
-      </div>
-
-      {/* Floating Action Button for creating new questions */}
+      </div>      {/* Floating Action Button for creating new questions */}
       {activeTab === 'questions' &&
         !showQuestionForm &&
         questions.length > 0 &&
