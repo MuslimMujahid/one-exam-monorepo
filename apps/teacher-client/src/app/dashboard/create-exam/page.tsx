@@ -105,6 +105,10 @@ export default function CreateExamPage() {  const {
       //   }
       // }
 
+      if (changes.questions) {
+        console.log('Saving questions:', changes.questions);
+      }
+
       // Mark as saved in the store
       markAsSaved();
 

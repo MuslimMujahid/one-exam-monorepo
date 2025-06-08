@@ -1,4 +1,5 @@
 import '../global.css';
+import { QueryProvider } from '../components/QueryProvider';
 
 export const metadata = {
   title: 'Welcome to teacher-client',
@@ -12,7 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <QueryProvider>{children}</QueryProvider>
+      </body>
     </html>
   );
 }
