@@ -22,26 +22,29 @@ model User {
 }
 
 model Exam {
-  id          String        @id @default(uuid())
-  title       String
-  description String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  userId      String
-  user        User          @relation(fields: [userId], references: [id])
-  questions   Question[]
-  sessions    ExamSession[]
+  id             String        @id @default(uuid())
+  title          String
+  description    String?
+  startDate      DateTime
+  endDate        DateTime
+  invitationCode String?       @unique
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  questions      Question[]
+  sessions       ExamSession[]
 }
 
 model Question {
-  id            String  @id @default(uuid())
-  text          String
-  questionType  String
-  options       Json?
-  correctAnswer String?
-  points        Int     @default(1)
-  examId        String
-  exam          Exam    @relation(fields: [examId], references: [id])
+  id           String       @id @default(uuid())
+  text         String
+  questionType String
+  options      Json?
+  points       Int          @default(1)
+  examId       String
+  exam         Exam         @relation(fields: [examId], references: [id])
+  attachments  Attachment[]
 }
 
 model ExamSession {
@@ -52,4 +55,15 @@ model ExamSession {
   score     Float?
   examId    String
   exam      Exam      @relation(fields: [examId], references: [id])
+}
+
+model Attachment {
+  id         String    @id @default(uuid())
+  url        String
+  fileName   String
+  mimeType   String
+  size       Int
+  examId     String
+  Question   Question? @relation(fields: [questionId], references: [id])
+  questionId String?
 }
