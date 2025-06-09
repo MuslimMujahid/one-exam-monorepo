@@ -12,7 +12,7 @@ export type QuestionOption = {
 export type Question = {
   id: string;
   text: string;
-  type: 'text' | 'single' | 'multiple';
+  type: 'text' | 'multiple-choice-single' | 'multiple-choice-multiple';
   options?: QuestionOption[];
   attachments: string[];
 }
@@ -33,7 +33,7 @@ export default function QuestionCreator({
   isEditMode = false
 }: QuestionCreatorProps) {
   const [questionText, setQuestionText] = useState('');
-  const [questionType, setQuestionType] = useState<'text' | 'single' | 'multiple'>('text');
+  const [questionType, setQuestionType] = useState<Question['type']>('text');
   const [options, setOptions] = useState<QuestionOption[]>([
     { text: '', isCorrect: false },
     { text: '', isCorrect: false },
@@ -62,7 +62,7 @@ export default function QuestionCreator({
     const newOptions = [...options];
 
     // If single choice, uncheck all other options
-    if (questionType === 'single') {
+    if (questionType === 'multiple-choice-single') {
       newOptions.forEach((option, i) => {
         option.isCorrect = i === index;
       });
@@ -108,19 +108,19 @@ export default function QuestionCreator({
   };
 
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newType = e.target.value as 'text' | 'single' | 'multiple';
+    const newType = e.target.value as Question['type'];
     setQuestionType(newType);
 
     // Reset options when switching to text type
     if (newType === 'text') {
       setOptions([{ text: '', isCorrect: false }, { text: '', isCorrect: false }]);
     }
-    // If switching from single to multiple, reset all correct flags
-    else if (newType === 'multiple' && questionType === 'single') {
+    // If switching from multiple-choice-single to multiple-choice-multiple, reset all correct flags
+    else if (newType === 'multiple-choice-multiple' && questionType === 'multiple-choice-single') {
       setOptions(options.map(opt => ({ ...opt, isCorrect: false })));
     }
-    // If switching from multiple to single, ensure only one option is selected
-    else if (newType === 'single' && questionType === 'multiple') {
+    // If switching from multiple-choice-multiple to multiple-choice-single, ensure only one option is selected
+    else if (newType === 'multiple-choice-single' && questionType === 'multiple-choice-multiple') {
       const hasSelected = options.some(opt => opt.isCorrect);
       setOptions(options.map((opt, idx) => ({
         ...opt,
@@ -146,13 +146,13 @@ export default function QuestionCreator({
       }
 
       // For single-choice, ensure exactly one correct answer
-      if (questionType === 'single' && !options.some(opt => opt.isCorrect)) {
+      if (questionType === 'multiple-choice-single' && !options.some(opt => opt.isCorrect)) {
         alert('Please select the correct answer.');
         return;
       }
 
       // For multiple-choice, ensure at least one correct answer
-      if (questionType === 'multiple' && !options.some(opt => opt.isCorrect)) {
+      if (questionType === 'multiple-choice-multiple' && !options.some(opt => opt.isCorrect)) {
         alert('Please select at least one correct answer.');
         return;
       }
@@ -245,7 +245,7 @@ export default function QuestionCreator({
               <div key={index} className="flex items-center gap-2">
                 <div className="flex items-center">
                   <input
-                    type={questionType === 'single' ? 'radio' : 'checkbox'}
+                    type={questionType === 'multiple-choice-single' ? 'radio' : 'checkbox'}
                     checked={option.isCorrect}
                     onChange={() => handleOptionCorrectChange(index)}
                     name="correctOption"

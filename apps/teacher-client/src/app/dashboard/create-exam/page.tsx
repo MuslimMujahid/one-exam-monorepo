@@ -9,8 +9,12 @@ import QuestionCreator, {
   Question,
 } from '../../../components/exams/QuestionCreator';
 import { useExamStore } from '../../../stores/examStore';
+import { useCreateExam } from '../../../hooks/useApi';
 
-export default function CreateExamPage() {  const {
+export default function CreateExamPage() {
+  const createExamMutation = useCreateExam();
+
+  const {
     activeTab,
     setActiveTab,
     examSettings,
@@ -105,8 +109,12 @@ export default function CreateExamPage() {  const {
       //   }
       // }
 
-      if (changes.questions) {
+      if (changes.questions && changes.examSettings) {
         console.log('Saving questions:', changes.questions);
+        await createExamMutation.mutateAsync({
+          examSettings: changes.examSettings,
+          questions: changes.questions.added
+        })
       }
 
       // Mark as saved in the store

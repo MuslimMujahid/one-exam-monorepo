@@ -47,12 +47,26 @@ export interface Exam {
   updatedAt: string;
 }
 
+export interface Question {
+  id: string;
+  text: string;
+  type: 'multiple-choice-single' | 'multiple-choice-multiple' | 'text';
+  options?: { value: Text; isCorrect: boolean }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type QuestionDto = Omit<Question, 'createdAt' | 'updatedAt'>;
+
 export interface CreateExamDto {
-  title: string;
-  description?: string;
-  duration: number;
-  startTime: string;
-  endTime: string;
+  examSettings: {
+    title: string;
+    description?: string;
+    startTime: string;
+    duration: number; // in minutes
+    invitationCode: string; // unique code for the exam
+  };
+  questions: QuestionDto[];
 }
 
 export interface UpdateExamDto extends Partial<CreateExamDto> {

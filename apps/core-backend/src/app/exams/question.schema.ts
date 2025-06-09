@@ -7,7 +7,7 @@ const baseSchema = z.object({
   questionType: z
     .enum(['multiple-choice-single', 'multiple-choice-multiple', 'text'])
     .default('text'),
-  attachments: z.array(attachmentSchema).optional(),
+  attachments: z.array(attachmentSchema),
   points: z.number().int().min(1).default(1),
 });
 
