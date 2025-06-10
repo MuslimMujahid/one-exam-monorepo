@@ -38,6 +38,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<UserFromJwt> {
+    this.logger.debug('Validating JWT payload', { payload });
+
     if (!payload) {
       this.logger.error('JWT payload is empty or invalid');
       throw new UnauthorizedException('Invalid token payload');

@@ -8,7 +8,7 @@ export interface ExamSettings {
   description: string;
   startTime: string;
   duration: number; // in minutes
-  examCode: string;
+  invitationCode: string;
 }
 
 export interface ExamState {
@@ -65,7 +65,7 @@ const defaultExamSettings: ExamSettings = {
   description: '',
   startTime: '',
   duration: 60,
-  examCode: generateRandomCode(),
+  invitationCode: generateRandomCode(),
 };
 
 // Deep comparison utility
@@ -275,7 +275,7 @@ export const useExamStore = create<ExamState>()(
         set(() => ({
           examSettings: {
             ...defaultExamSettings,
-            examCode: generateRandomCode(),
+            invitationCode: generateRandomCode(),
           },
           questions: [],
           originalExamSettings: null,

@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import { Button, Input } from "@one-exam-monorepo/ui";
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { Button, Input } from '@one-exam-monorepo/ui';
 
 export type QuestionOption = {
-  text: string;
+  value: string;
   isCorrect: boolean;
-}
+};
 
 export type Question = {
   id: string;
@@ -15,7 +15,7 @@ export type Question = {
   type: 'text' | 'multiple-choice-single' | 'multiple-choice-multiple';
   options?: QuestionOption[];
   attachments: string[];
-}
+};
 
 interface QuestionCreatorProps {
   onAddQuestion: (question: Question) => void;
@@ -30,31 +30,34 @@ export default function QuestionCreator({
   onUpdateQuestion,
   onCancel,
   questionToEdit = null,
-  isEditMode = false
+  isEditMode = false,
 }: QuestionCreatorProps) {
   const [questionText, setQuestionText] = useState('');
   const [questionType, setQuestionType] = useState<Question['type']>('text');
   const [options, setOptions] = useState<QuestionOption[]>([
-    { text: '', isCorrect: false },
-    { text: '', isCorrect: false },
-  ]);  const [attachments, setAttachments] = useState<string[]>([]);
+    { value: '', isCorrect: false },
+    { value: '', isCorrect: false },
+  ]);
+  const [attachments, setAttachments] = useState<string[]>([]);
 
   // Initialize form with questionToEdit data when in edit mode
   useEffect(() => {
     if (questionToEdit) {
       setQuestionText(questionToEdit.text);
       setQuestionType(questionToEdit.type);
-      setOptions(questionToEdit.options || [
-        { text: '', isCorrect: false },
-        { text: '', isCorrect: false },
-      ]);
+      setOptions(
+        questionToEdit.options || [
+          { value: '', isCorrect: false },
+          { value: '', isCorrect: false },
+        ]
+      );
       setAttachments(questionToEdit.attachments || []);
     }
   }, [questionToEdit]);
 
-  const handleOptionTextChange = (index: number, text: string) => {
+  const handleOptionTextChange = (index: number, value: string) => {
     const newOptions = [...options];
-    newOptions[index].text = text;
+    newOptions[index].value = value;
     setOptions(newOptions);
   };
 
@@ -75,7 +78,7 @@ export default function QuestionCreator({
   };
 
   const addOption = () => {
-    setOptions([...options, { text: '', isCorrect: false }]);
+    setOptions([...options, { value: '', isCorrect: false }]);
   };
 
   const removeOption = (index: number) => {
@@ -88,7 +91,7 @@ export default function QuestionCreator({
     if (!files || files.length === 0) return;
 
     // Process each file
-    Array.from(files).forEach(file => {
+    Array.from(files).forEach((file) => {
       // Only allow images
       if (!file.type.startsWith('image/')) {
         alert('Please select only image files.');
@@ -97,14 +100,16 @@ export default function QuestionCreator({
 
       const reader = new FileReader();
       reader.onload = () => {
-        setAttachments(prev => [...prev, reader.result as string]);
+        setAttachments((prev) => [...prev, reader.result as string]);
       };
       reader.readAsDataURL(file);
     });
   };
 
   const removeAttachment = (indexToRemove: number) => {
-    setAttachments(prev => prev.filter((_, index) => index !== indexToRemove));
+    setAttachments((prev) =>
+      prev.filter((_, index) => index !== indexToRemove)
+    );
   };
 
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -113,19 +118,32 @@ export default function QuestionCreator({
 
     // Reset options when switching to text type
     if (newType === 'text') {
-      setOptions([{ text: '', isCorrect: false }, { text: '', isCorrect: false }]);
+      setOptions([
+        { value: '', isCorrect: false },
+        { value: '', isCorrect: false },
+      ]);
     }
     // If switching from multiple-choice-single to multiple-choice-multiple, reset all correct flags
-    else if (newType === 'multiple-choice-multiple' && questionType === 'multiple-choice-single') {
-      setOptions(options.map(opt => ({ ...opt, isCorrect: false })));
+    else if (
+      newType === 'multiple-choice-multiple' &&
+      questionType === 'multiple-choice-single'
+    ) {
+      setOptions(options.map((opt) => ({ ...opt, isCorrect: false })));
     }
     // If switching from multiple-choice-multiple to multiple-choice-single, ensure only one option is selected
-    else if (newType === 'multiple-choice-single' && questionType === 'multiple-choice-multiple') {
-      const hasSelected = options.some(opt => opt.isCorrect);
-      setOptions(options.map((opt, idx) => ({
-        ...opt,
-        isCorrect: hasSelected ? idx === options.findIndex(o => o.isCorrect) : idx === 0
-      })));
+    else if (
+      newType === 'multiple-choice-single' &&
+      questionType === 'multiple-choice-multiple'
+    ) {
+      const hasSelected = options.some((opt) => opt.isCorrect);
+      setOptions(
+        options.map((opt, idx) => ({
+          ...opt,
+          isCorrect: hasSelected
+            ? idx === options.findIndex((o) => o.isCorrect)
+            : idx === 0,
+        }))
+      );
     }
   };
 
@@ -139,24 +157,30 @@ export default function QuestionCreator({
 
     // For options-based questions, validate options
     if (questionType !== 'text') {
-      const validOptions = options.filter(opt => opt.text.trim());
+      const validOptions = options.filter((opt) => opt.value.trim());
       if (validOptions.length < 2) {
         alert('Please provide at least 2 options.');
         return;
       }
 
       // For single-choice, ensure exactly one correct answer
-      if (questionType === 'multiple-choice-single' && !options.some(opt => opt.isCorrect)) {
+      if (
+        questionType === 'multiple-choice-single' &&
+        !options.some((opt) => opt.isCorrect)
+      ) {
         alert('Please select the correct answer.');
         return;
       }
 
       // For multiple-choice, ensure at least one correct answer
-      if (questionType === 'multiple-choice-multiple' && !options.some(opt => opt.isCorrect)) {
+      if (
+        questionType === 'multiple-choice-multiple' &&
+        !options.some((opt) => opt.isCorrect)
+      ) {
         alert('Please select at least one correct answer.');
         return;
       }
-    }    // Prepare the question data with proper typing
+    } // Prepare the question data with proper typing
     const questionData: Omit<Question, 'id'> = {
       text: questionText,
       type: questionType,
@@ -165,7 +189,7 @@ export default function QuestionCreator({
 
     // Add options if not text type
     if (questionType !== 'text') {
-      questionData.options = options.filter(opt => opt.text.trim());
+      questionData.options = options.filter((opt) => opt.value.trim());
     }
 
     if (isEditMode && questionToEdit) {
@@ -180,14 +204,17 @@ export default function QuestionCreator({
       // The parent component will handle generating the real ID
       onAddQuestion({
         ...questionData,
-        id: 'temp-' + Date.now().toString() // This will be replaced by the parent
+        id: 'temp-' + Date.now().toString(), // This will be replaced by the parent
       });
 
       // Only reset form for new questions, not when editing
       if (!isEditMode) {
         setQuestionText('');
         setQuestionType('text');
-        setOptions([{ text: '', isCorrect: false }, { text: '', isCorrect: false }]);
+        setOptions([
+          { value: '', isCorrect: false },
+          { value: '', isCorrect: false },
+        ]);
         setAttachments([]);
       }
     }
@@ -205,7 +232,10 @@ export default function QuestionCreator({
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="questionText" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="questionText"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Question Text
           </label>
           <textarea
@@ -218,9 +248,11 @@ export default function QuestionCreator({
             required
           />
         </div>
-
         <div>
-          <label htmlFor="questionType" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="questionType"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Question Type
           </label>
           <select
@@ -234,7 +266,6 @@ export default function QuestionCreator({
             <option value="multiple">Multiple Choice (Multiple Answers)</option>
           </select>
         </div>
-
         {questionType !== 'text' && (
           <div className="space-y-3">
             <label className="block text-sm font-medium text-gray-700">
@@ -245,7 +276,11 @@ export default function QuestionCreator({
               <div key={index} className="flex items-center gap-2">
                 <div className="flex items-center">
                   <input
-                    type={questionType === 'multiple-choice-single' ? 'radio' : 'checkbox'}
+                    type={
+                      questionType === 'multiple-choice-single'
+                        ? 'radio'
+                        : 'checkbox'
+                    }
                     checked={option.isCorrect}
                     onChange={() => handleOptionCorrectChange(index)}
                     name="correctOption"
@@ -254,8 +289,10 @@ export default function QuestionCreator({
                 </div>
 
                 <Input
-                  value={option.text}
-                  onChange={(e) => handleOptionTextChange(index, e.target.value)}
+                  value={option.value}
+                  onChange={(e) =>
+                    handleOptionTextChange(index, e.target.value)
+                  }
                   placeholder={`Option ${index + 1}`}
                   className="flex-1"
                   required
@@ -282,7 +319,8 @@ export default function QuestionCreator({
               Add Option
             </Button>
           </div>
-        )}        <div>
+        )}{' '}
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Attachments (Optional)
           </label>
@@ -291,7 +329,11 @@ export default function QuestionCreator({
           {attachments.length > 0 && (
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
               {attachments.map((attachment, index) => (
-                <div key={index} className="relative" style={{ height: '160px', width: '240px' }}>
+                <div
+                  key={index}
+                  className="relative"
+                  style={{ height: '160px', width: '240px' }}
+                >
                   <Image
                     src={attachment}
                     alt={`Question attachment ${index + 1}`}
@@ -348,12 +390,13 @@ export default function QuestionCreator({
               </div>
               <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
               {attachments.length > 0 && (
-                <p className="text-sm text-blue-600">{attachments.length} attachment(s) added</p>
+                <p className="text-sm text-blue-600">
+                  {attachments.length} attachment(s) added
+                </p>
               )}
             </div>
           </div>
         </div>
-
         <div className="pt-4 flex space-x-4">
           {onCancel && (
             <Button type="button" variant="outline" onClick={handleCancelClick}>

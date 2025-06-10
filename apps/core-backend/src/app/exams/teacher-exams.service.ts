@@ -10,6 +10,15 @@ export class TeacherExamsService {
     return this.prisma.exam.findMany();
   }
 
+  async getExamById(id: string) {
+    return this.prisma.exam.findUnique({
+      where: { id },
+      include: {
+        questions: true,
+      },
+    });
+  }
+
   async createExam(dto: CreateExamDto, userId: string) {
     const { questions, ...others } = dto;
 

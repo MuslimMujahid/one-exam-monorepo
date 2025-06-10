@@ -1,7 +1,6 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Input, Textarea } from "@one-exam-monorepo/ui";
+import { Input, Textarea } from '@one-exam-monorepo/ui';
 
 interface ExamFormProps {
   examSettings: {
@@ -9,13 +8,15 @@ interface ExamFormProps {
     description: string;
     startTime: string;
     duration: number;
-    examCode: string;
+    invitationCode: string;
   };
   onChange: (settings: Partial<ExamFormProps['examSettings']>) => void;
 }
 
 export default function ExamForm({ examSettings, onChange }: ExamFormProps) {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     onChange({ [name]: value });
   };
@@ -29,7 +30,7 @@ export default function ExamForm({ examSettings, onChange }: ExamFormProps) {
 
   const regenerateCode = () => {
     const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    onChange({ examCode: newCode });
+    onChange({ invitationCode: newCode });
   };
 
   return (
@@ -39,7 +40,10 @@ export default function ExamForm({ examSettings, onChange }: ExamFormProps) {
 
         <div className="space-y-4">
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="title"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Exam Title
             </label>
             <Input
@@ -53,7 +57,10 @@ export default function ExamForm({ examSettings, onChange }: ExamFormProps) {
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Description (optional)
             </label>
             <Textarea
@@ -73,7 +80,10 @@ export default function ExamForm({ examSettings, onChange }: ExamFormProps) {
 
         <div className="space-y-4">
           <div>
-            <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="startTime"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Start Time
             </label>
             <Input
@@ -87,7 +97,10 @@ export default function ExamForm({ examSettings, onChange }: ExamFormProps) {
           </div>
 
           <div>
-            <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="duration"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Duration (minutes)
             </label>
             <Input
@@ -102,14 +115,17 @@ export default function ExamForm({ examSettings, onChange }: ExamFormProps) {
           </div>
 
           <div>
-            <label htmlFor="examCode" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="examCode"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Exam Code
             </label>
             <div className="flex gap-2">
               <Input
                 id="examCode"
                 name="examCode"
-                value={examSettings.examCode}
+                value={examSettings.invitationCode}
                 onChange={handleChange}
                 className="flex-1"
                 readOnly
