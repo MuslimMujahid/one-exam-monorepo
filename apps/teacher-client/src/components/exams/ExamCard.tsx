@@ -20,30 +20,29 @@ import {
 export interface ExamCardProps {
   id: string;
   title: string;
+  examCode: string;
   description?: string;
-  status: 'draft' | 'scheduled' | 'active' | 'completed' | 'cancelled';
+  status: 'draft' | 'scheduled' | 'active' | 'completed';
   startTime: string;
   duration: number;
-  totalStudents: number;
   enrolledStudents: number;
   completedStudents?: number;
   averageScore?: number;
-  createdAt: string;
-  questionCount: number;
+  questionsCount: number;
 }
 
 export function ExamCard({
   id,
   title,
+  examCode,
   description,
   status,
   startTime,
   duration,
-  totalStudents,
   enrolledStudents,
   completedStudents,
   averageScore,
-  questionCount,
+  questionsCount,
 }: ExamCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -111,6 +110,9 @@ export function ExamCard({
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            <span className="text-sm font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              {examCode}
+            </span>
             <span
               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
                 status
@@ -126,11 +128,11 @@ export function ExamCard({
           <div className="flex items-center gap-4 text-sm text-gray-500">
             <span className="flex items-center gap-1">
               <Users className="h-4 w-4" />
-              {totalStudents} students
+              {enrolledStudents} students
             </span>
             <span className="flex items-center gap-1">
               <HelpCircle className="h-4 w-4" />
-              {questionCount} questions
+              {questionsCount} questions
             </span>
             <span className="flex items-center gap-1">
               <Clock className="h-4 w-4" />

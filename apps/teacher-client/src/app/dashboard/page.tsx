@@ -11,68 +11,72 @@ import {
 } from '@one-exam-monorepo/ui';
 import { ExamCard } from '../../components/exams/ExamCard';
 import { Plus, Check, Clock } from 'lucide-react';
+import { GetAllExamsRes } from '../../services/get-all-exams';
 
-export default function DashboardPage() {
-  // Mock exam data - in a real app, this would come from an API
-  const mockExams = [
-    {
-      id: '1',
-      title: 'Introduction to Computer Science - Midterm',
-      description:
-        'Covers chapters 1-5: Variables, Functions, and Control Structures',
-      examCode: 'CS101M',
-      status: 'scheduled' as const,
-      startTime: '2025-06-15T10:00:00Z',
-      duration: 90,
-      totalStudents: 32,
-      enrolledStudents: 28,
-      createdAt: '2025-06-01T10:00:00Z',
-      questionCount: 25,
-    },
-    {
-      id: '2',
-      title: 'Data Structures Final Exam',
-      description:
-        'Comprehensive exam covering all data structures and algorithms',
-      examCode: 'CS202F',
-      status: 'active' as const,
-      startTime: '2025-06-11T14:00:00Z',
-      duration: 120,
-      totalStudents: 28,
-      enrolledStudents: 28,
-      completedStudents: 12,
-      createdAt: '2025-05-28T10:00:00Z',
-      questionCount: 30,
-    },
-    {
-      id: '3',
-      title: 'Database Systems Quiz',
-      description: 'Quick assessment on SQL and database design',
-      examCode: 'CS303Q',
-      status: 'completed' as const,
-      startTime: '2025-06-08T09:00:00Z',
-      duration: 45,
-      totalStudents: 24,
-      enrolledStudents: 24,
-      completedStudents: 22,
-      averageScore: 85.6,
-      createdAt: '2025-06-05T10:00:00Z',
-      questionCount: 15,
-    },
-    {
-      id: '4',
-      title: 'Advanced Algorithms Practice Test',
-      description: 'Practice test for upcoming final exam',
-      examCode: 'CS401P',
-      status: 'draft' as const,
-      startTime: '2025-06-20T11:00:00Z',
-      duration: 60,
-      totalStudents: 18,
-      enrolledStudents: 0,
-      createdAt: '2025-06-10T10:00:00Z',
-      questionCount: 0,
-    },
-  ];
+export default async function DashboardPage() {
+  const data = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/exams/teacher`);
+
+  if (!data.ok) {
+    throw new Error('Failed to fetch exams');
+  }
+
+  const examsData: GetAllExamsRes = await data.json();
+
+  function getExamStatus(exam: GetAllExamsRes[number]) {
+    const startTime = new Date(exam.startDate);
+    const endTime = new Date(exam.endDate);
+    const now = new Date();
+
+    if (exam.status === 'DRAFT') {
+      return 'draft';
+    }
+
+    if (now < startTime) {
+      return 'scheduled';
+    }
+
+    if (now >= startTime && now <= endTime) {
+      return 'active';
+    }
+
+    return 'completed';
+  }
+
+  function getExamDuration(exam: GetAllExamsRes[number]) {
+    const startTime = new Date(exam.startDate);
+    const endTime = new Date(exam.endDate);
+
+    return Math.round((endTime.getTime() - startTime.getTime()) / 60000); // duration in minutes
+  }
+
+  const examCardsData = examsData.map((exam) => ({
+    id: exam.id,
+    examCode: exam.examCode,
+    title: exam.title,
+    description: exam.description || 'No description provided',
+    status: getExamStatus(exam) as
+      | 'draft'
+      | 'scheduled'
+      | 'active'
+      | 'completed',
+    startTime: exam.startDate,
+    duration: getExamDuration(exam),
+    enrolledStudents: 25,
+    completedStudents: 0,
+    questionsCount: exam.questionsCount,
+    averageScore: 0,
+  }));
+
+  const upcomingExams = examCardsData.filter(
+    (exam) => exam.status === 'scheduled'
+  );
+
+  const activeExams = examCardsData.filter((exam) => exam.status === 'active');
+
+  const totalStudents = examCardsData.reduce(
+    (acc, exam) => acc + exam.enrolledStudents,
+    0
+  );
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -89,7 +93,9 @@ export default function DashboardPage() {
             <h3 className="text-lg font-semibold text-gray-700">
               Total Students
             </h3>
-            <span className="text-2xl font-bold text-green-600">102</span>
+            <span className="text-2xl font-bold text-green-600">
+              {totalStudents}
+            </span>
           </div>
           <p className="mt-2 text-gray-600">Across all your active exams</p>
         </div>
@@ -99,7 +105,9 @@ export default function DashboardPage() {
             <h3 className="text-lg font-semibold text-gray-700">
               Active Exams
             </h3>
-            <span className="text-2xl font-bold text-blue-600">1</span>
+            <span className="text-2xl font-bold text-blue-600">
+              {activeExams.length}
+            </span>
           </div>
           <p className="mt-2 text-gray-600">Currently running exams</p>
         </div>
@@ -109,7 +117,9 @@ export default function DashboardPage() {
             <h3 className="text-lg font-semibold text-gray-700">
               Upcoming Exams
             </h3>
-            <span className="text-2xl font-bold text-purple-600">2</span>
+            <span className="text-2xl font-bold text-purple-600">
+              {upcomingExams.length}
+            </span>
           </div>
           <p className="mt-2 text-gray-600">Scheduled for this week</p>
         </div>
@@ -137,22 +147,8 @@ export default function DashboardPage() {
           </div>
         </div>{' '}
         <div className="divide-y">
-          {mockExams.map((exam) => (
-            <ExamCard
-              key={exam.id}
-              id={exam.id}
-              title={exam.title}
-              description={exam.description}
-              status={exam.status}
-              startTime={exam.startTime}
-              duration={exam.duration}
-              totalStudents={exam.totalStudents}
-              enrolledStudents={exam.enrolledStudents}
-              completedStudents={exam.completedStudents}
-              averageScore={exam.averageScore}
-              createdAt={exam.createdAt}
-              questionCount={exam.questionCount}
-            />
+          {examCardsData.map((exam) => (
+            <ExamCard key={exam.id} {...exam} />
           ))}
         </div>
       </div>

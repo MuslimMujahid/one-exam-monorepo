@@ -7,7 +7,19 @@ export class TeacherExamsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getAllExams() {
-    return this.prisma.exam.findMany();
+    const exams = await this.prisma.exam.findMany();
+
+    // Count questions for each exam
+    const questionsCount = await this.prisma.$transaction(
+      exams.map((exam) =>
+        this.prisma.question.count({ where: { examId: exam.id } })
+      )
+    );
+
+    return exams.map((exam, index) => ({
+      ...exam,
+      questionsCount: questionsCount[index],
+    }));
   }
 
   async getExamById(id: string) {
@@ -33,5 +45,43 @@ export class TeacherExamsService {
         },
       },
     });
+  }
+
+  async createExams(dtos: CreateExamDto[], userId: string) {
+    const examsData = dtos.map((dto) => ({
+      userId,
+      title: dto.title,
+      startDate: dto.startDate,
+      description: dto.description,
+      endDate: dto.endDate,
+      examCode: dto.examCode,
+      passKey: dto.passKey,
+      status: dto.status,
+    }));
+
+    const questionsData = dtos.map((dto) => dto.questions);
+
+    return this.prisma.$transaction(async (tx) => {
+      // Create exams
+      const createdExams = await tx.exam.createMany({
+        data: examsData,
+      });
+
+      // Create questions for each exam
+      questionsData.forEach((questions, index) => {
+        return tx.question.createMany({
+          data: questions.map((question) => ({
+            ...question,
+            examId: createdExams[index].id,
+          })),
+        });
+      });
+
+      return createdExams;
+    });
+  }
+
+  async removeAllExams() {
+    return this.prisma.exam.deleteMany({});
   }
 }
