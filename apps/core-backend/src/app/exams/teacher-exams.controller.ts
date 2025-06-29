@@ -7,7 +7,7 @@ import { CreateExamDto } from './create-exam.schema';
 import { User } from '../users/user.decorator';
 import { UserFromJwt } from '../auth/jwt.strategy';
 
-// @UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 // @Roles('teacher')
 @Controller('exams/teacher')
 export class ExamsController {
@@ -28,6 +28,7 @@ export class ExamsController {
     @Body() createExamDto: CreateExamDto,
     @User() user: UserFromJwt
   ) {
+    console.log('user', user);
     return this.examService.createExam(createExamDto, user.userId);
   }
 }

@@ -18,12 +18,13 @@ import { useCreateExam } from '../../hooks/useApi';
 import { GetExamByIdRes } from '../../services/get-exam-by-id';
 import ExamEditorQuestions from './ExamEditorQuestions';
 import { ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 
-interface ExamEditorProps {
+type ExamEditorProps = {
   examId?: string;
-  initialData: GetExamByIdRes;
+  initialData?: GetExamByIdRes;
   isEditMode?: boolean;
-}
+};
 
 function transformApiDataToStoreFormat(apiData: GetExamByIdRes) {
   const examSettings = {
@@ -138,13 +139,13 @@ export default function ExamEditor({
         markAsSaved();
         alert('Exam updated successfully!');
       } else {
+        toast('Exam has been created successfully!');
         // Create mode - create new exam
         if (changes.questions && changes.examSettings) {
-          console.log('Creating exam with questions:', changes.questions);
-          // const result = await createExamMutation.mutateAsync({
-          //   examSettings: changes.examSettings,
-          //   questions: changes.questions.added,
-          // });
+          await createExamMutation.mutateAsync({
+            examSettings: changes.examSettings,
+            questions: changes.questions.added,
+          });
 
           // Mark as saved in the store
           markAsSaved();

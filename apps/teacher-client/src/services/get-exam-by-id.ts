@@ -27,7 +27,8 @@ export function getExamById(
 ) {
   return apiHelpers
     .auth(session)
-    .get<GetExamByIdRes>(`/exams/teacher/${payload.examId}`);
+    .get<GetExamByIdRes>(`/exams/teacher/${payload.examId}`)
+    .then((response) => response.data);
 }
 
 export function getExamByIdQuery(

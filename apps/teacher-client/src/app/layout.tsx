@@ -1,5 +1,6 @@
 import '../global.css';
 import { QueryProvider } from '../components/QueryProvider';
+import { Toaster } from '@one-exam-monorepo/ui';
 
 export const metadata = {
   title: 'Welcome to teacher-client',
@@ -15,6 +16,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <QueryProvider>{children}</QueryProvider>
+        <Toaster />
       </body>
     </html>
   );

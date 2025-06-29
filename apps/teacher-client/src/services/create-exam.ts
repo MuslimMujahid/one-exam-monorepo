@@ -1,6 +1,4 @@
 import { apiHelpers } from '../lib/axios';
-import { ApiResponse } from '../types/api';
-import { Exam } from './exam';
 
 type Question = {
   id: string;
@@ -20,10 +18,9 @@ export type CreateExamDto = {
   questions: Question[];
 };
 
-export type CreateExamResponse = ApiResponse<Exam>;
-
-export function createExam(examData: CreateExamDto): Promise<Exam> {
-  return apiHelpers.auth
-    .post<ApiResponse<Exam>>('/exams/teacher/create', examData)
-    .then((response) => response.data.data);
+export function createExam(examData: CreateExamDto) {
+  return apiHelpers
+    .auth()
+    .post('/exams/teacher/create', examData)
+    .then((response) => response.data);
 }
