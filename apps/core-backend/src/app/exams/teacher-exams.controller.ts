@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Post,
   UseGuards,
@@ -15,15 +16,17 @@ import { CreateExamDto } from './create-exam.schema';
 import { User } from '../users/user.decorator';
 import { UserFromJwt } from '../auth/jwt.strategy';
 
-// @UseGuards(JwtAuthGuard, RolesGuard)
-// @Roles('teacher')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('TEACHER')
 @Controller('exams/teacher')
-export class ExamsController {
+export class TeacherExamsController {
+  private readonly logger = new Logger(TeacherExamsController.name);
+
   constructor(private readonly examService: TeacherExamsService) {}
 
   @Get()
-  async getAllExams() {
-    return this.examService.getAllExams();
+  async getAllExams(@User() user: UserFromJwt) {
+    return this.examService.getAllExams(user);
   }
 
   @Get(':id')
@@ -37,7 +40,7 @@ export class ExamsController {
     @Body() createExamDto: CreateExamDto,
     @User() user: UserFromJwt
   ) {
-    console.log('user', user);
+    this.logger.debug(`Creating exam for user: ${JSON.stringify(user)}`);
     return this.examService.createExam(createExamDto, user.userId);
   }
 

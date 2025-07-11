@@ -13,6 +13,7 @@ export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
+    this.logger.debug('Checking roles for access control');
     const requiredRoles = this.reflector.getAllAndOverride<string[]>('roles', [
       context.getHandler(),
       context.getClass(),
@@ -26,13 +27,14 @@ export class RolesGuard implements CanActivate {
     const { user } = context.switchToHttp().getRequest();
 
     this.logger.debug(`User: ${JSON.stringify(user)}`);
+    this.logger.debug(`Required roles: ${requiredRoles}`);
 
     // Make sure user exists and has permissions/roles
-    if (!user || !user.roles || !Array.isArray(user.roles)) {
+    if (!user || !user.role) {
       return false;
     }
 
     // Check if user has any of the required roles
-    return requiredRoles.some((role) => user.roles.includes(role));
+    return requiredRoles.some((role) => user.role === role);
   }
 }

@@ -1,13 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateExamDto } from './create-exam.schema';
+import { UserFromJwt } from '../auth/jwt.strategy';
 
 @Injectable()
 export class TeacherExamsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getAllExams() {
-    const exams = await this.prisma.exam.findMany();
+  async getAllExams(user: UserFromJwt) {
+    const exams = await this.prisma.exam.findMany({
+      where: { userId: user.userId },
+    });
 
     // Count questions for each exam
     const questionsCount = await this.prisma.$transaction(
