@@ -16,12 +16,17 @@ enum ExamStatus {
   COMPLETED
 }
 
+enum UserRole {
+  STUDENT
+  TEACHER
+}
+
 model User {
   id        String   @id @default(uuid())
-  auth0_sub String   @unique
   email     String   @unique
+  password  String
   name      String?
-  role      String?
+  role      UserRole @default(STUDENT)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   exams     Exam[]

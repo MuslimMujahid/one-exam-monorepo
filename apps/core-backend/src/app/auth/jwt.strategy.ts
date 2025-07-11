@@ -1,21 +1,18 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { passportJwtSecret } from 'jwks-rsa';
-import { authConfig } from './auth.config';
 import { PrismaService } from '../prisma/prisma.service';
 
 type JwtPayload = {
   sub: string;
-  email?: string;
-  roles?: string[];
-  ['https://one-exam.com/roles']: string[];
+  email: string;
+  role: string;
 };
 
 export type UserFromJwt = {
   userId: string;
-  email?: string;
-  roles: string[];
+  email: string;
+  role: string;
 };
 
 @Injectable()
@@ -25,15 +22,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly prismaService: PrismaService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKeyProvider: passportJwtSecret({
-        cache: true,
-        rateLimit: true,
-        jwksRequestsPerMinute: 5,
-        jwksUri: `https://${authConfig.domain}/.well-known/jwks.json`,
-      }),
-      audience: authConfig.audience,
-      issuer: `https://${authConfig.domain}/`,
-      algorithms: ['RS256'],
+      ignoreExpiration: true,
+      secretOrKey: process.env.JWT_ACCESS_SECRET,
     });
   }
 
@@ -47,7 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     const foundedUser = await this.prismaService.user.findUnique({
       where: {
-        auth0_sub: payload.sub,
+        id: payload.sub,
       },
     });
 
@@ -58,8 +48,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     const user: UserFromJwt = {
       userId: foundedUser.id,
-      email: payload.email,
-      roles: payload['https://one-exam.com/roles'] || [],
+      email: foundedUser.email,
+      role: foundedUser.role,
     };
 
     return user;
