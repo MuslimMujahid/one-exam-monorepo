@@ -27,10 +27,13 @@ export class UserService {
 // Exam Service
 export class ExamService {
   static async createExam(examData: CreateExamDto): Promise<Exam> {
-    const response = await apiHelpers.auth.post<ApiResponse<Exam>>(
-      '/exams/teacher/create',
-      examData
-    );
+    console.log('Creating exam with data:', examData);
+
+    const response = await apiHelpers
+      .auth()
+      .post<ApiResponse<Exam>>('/exams/teacher/create', examData);
+
+    console.log('Exam created response:', response.data);
 
     return response.data.data;
   }

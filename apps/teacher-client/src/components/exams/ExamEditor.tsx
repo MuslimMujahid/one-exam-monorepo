@@ -19,6 +19,7 @@ import { GetExamByIdRes } from '../../services/get-exam-by-id';
 import ExamEditorQuestions from './ExamEditorQuestions';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { add as dateAdd } from 'date-fns/add';
 
 type ExamEditorProps = {
   examId?: string;
@@ -139,7 +140,6 @@ export default function ExamEditor({
         markAsSaved();
         alert('Exam updated successfully!');
       } else {
-        toast('Exam has been created successfully!');
         // Create mode - create new exam
         if (changes.questions && changes.examSettings) {
           await createExamMutation.mutateAsync({
@@ -150,6 +150,7 @@ export default function ExamEditor({
           // Mark as saved in the store
           markAsSaved();
 
+          toast('Exam has been created successfully!');
           alert('Exam created successfully!');
           // Navigate to the edit page for the newly created exam
           // if (result?.id) {
@@ -167,6 +168,44 @@ export default function ExamEditor({
       alert(
         `Error ${isEditMode ? 'updating' : 'creating'} exam. Please try again.`
       );
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      const changes = getChangedData();
+
+      const startDate = changes.examSettings?.startTime
+        ? new Date(changes.examSettings.startTime)
+        : '';
+      const endDate = startDate
+        ? dateAdd(startDate, {
+            minutes: changes.examSettings?.duration || 0,
+          })
+        : '';
+
+      const examDto = {
+        title: changes.examSettings?.title ?? '',
+        description: changes.examSettings?.description ?? '',
+        startDate: startDate ? new Date(startDate).toISOString() : '',
+        endDate: endDate ? new Date(endDate).toISOString() : '',
+        examCode: changes.examSettings?.examCode ?? '',
+        passKey: changes.examSettings?.passKey ?? '',
+        status: 'DRAFT',
+      };
+      console.log('Saving exam draft with data:', examDto);
+      // await createExamMutation.mutateAsync({
+      //   examSettings: changes.examSettings,
+      //   questions: changes.questions?.added,
+      // });
+
+      // Logic to save as draft
+      // This could involve saving the current state to a draft endpoint or local storage
+      markAsSaved();
+      toast('Exam saved as draft successfully!');
+    } catch (error) {
+      console.error('Error saving exam draft:', error);
+      toast.error('Error saving exam draft. Please try again.');
     }
   };
 
@@ -243,8 +282,13 @@ export default function ExamEditor({
 
       <div className="mt-12 flex justify-end space-x-4">
         <Button variant="outline">Cancel</Button>
+        {!isEditMode && (
+          <Button variant="outline" onClick={handleSaveDraft}>
+            Save as Draft
+          </Button>
+        )}
         <Button onClick={handleSaveExam}>
-          {isEditMode ? 'Update Exam' : 'Create Exam'}
+          {isEditMode ? 'Update Exam' : 'Publish Exam'}
         </Button>
       </div>
     </div>

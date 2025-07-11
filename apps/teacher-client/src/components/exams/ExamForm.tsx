@@ -8,7 +8,8 @@ interface ExamFormProps {
     description: string;
     startTime: string;
     duration: number;
-    invitationCode: string;
+    examCode: string;
+    passKey: string;
   };
   onChange: (settings: Partial<ExamFormProps['examSettings']>) => void;
 }
@@ -30,7 +31,7 @@ export default function ExamForm({ examSettings, onChange }: ExamFormProps) {
 
   const regenerateCode = () => {
     const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    onChange({ invitationCode: newCode });
+    onChange({ passKey: newCode });
   };
 
   return (
@@ -121,11 +122,31 @@ export default function ExamForm({ examSettings, onChange }: ExamFormProps) {
             >
               Exam Code
             </label>
+            <Input
+              id="examCode"
+              name="examCode"
+              type="text"
+              value={examSettings.examCode}
+              onChange={handleChange}
+              className="w-full"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              Unique identifier for the exam.
+            </p>
+          </div>
+
+          <div>
+            <label
+              htmlFor="passKey"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Pass Key
+            </label>
             <div className="flex gap-2">
               <Input
-                id="examCode"
-                name="examCode"
-                value={examSettings.invitationCode}
+                id="passKey"
+                name="passKey"
+                value={examSettings.passKey}
                 onChange={handleChange}
                 className="flex-1"
                 readOnly
@@ -139,7 +160,7 @@ export default function ExamForm({ examSettings, onChange }: ExamFormProps) {
               </button>
             </div>
             <p className="mt-1 text-sm text-gray-500">
-              Students will use this code to join the exam.
+              Students will use this key to join the exam.
             </p>
           </div>
         </div>
