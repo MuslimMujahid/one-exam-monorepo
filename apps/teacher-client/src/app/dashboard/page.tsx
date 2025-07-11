@@ -12,9 +12,19 @@ import {
 import { ExamCard } from '../../components/exams/ExamCard';
 import { Plus, Check, Clock } from 'lucide-react';
 import { GetAllExamsRes } from '../../services/get-all-exams';
+import { AuthServerService } from '../../lib/auth-server';
 
 export default async function DashboardPage() {
-  const data = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/exams/teacher`);
+  // Get authenticated session
+  const session = await AuthServerService.requireRole('TEACHER');
+
+  // Make authenticated API call
+  const data = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/exams/teacher`, {
+    headers: {
+      Authorization: `Bearer ${session.tokens.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
 
   if (!data.ok) {
     throw new Error('Failed to fetch exams');

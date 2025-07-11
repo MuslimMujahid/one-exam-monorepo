@@ -11,15 +11,14 @@ import type {
 // User Service
 export class UserService {
   static async getCurrentUser(): Promise<User> {
-    const response = await apiHelpers.auth.get<ApiResponse<User>>('/users/me');
+    const api = apiHelpers.auth();
+    const response = await api.get<ApiResponse<User>>('/users/me');
     return response.data.data;
   }
 
   static async updateProfile(userData: Partial<User>): Promise<User> {
-    const response = await apiHelpers.auth.put<ApiResponse<User>>(
-      '/users/me',
-      userData
-    );
+    const api = apiHelpers.auth();
+    const response = await api.put<ApiResponse<User>>('/users/me', userData);
     return response.data.data;
   }
 }

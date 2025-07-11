@@ -5,7 +5,6 @@ You are assisting me with a large NX monorepo for an exam platform called "one-e
 - student-client: A Vite-based React application with Tailwind CSS
 - student-client-electron: An Electron desktop app
 - teacher-client: A Next.js application with Tailwind CSS
-- Authentication is handled via Auth0
 
 # Backend services:
 

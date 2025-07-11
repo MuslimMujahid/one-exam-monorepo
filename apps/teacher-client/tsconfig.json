@@ -10,6 +10,12 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@one-exam-monorepo/ui": ["../../shared/ui/src/index.ts"],
+      "@one-exam-monorepo/utils": ["../../shared/utils/src/index.ts"]
+    },
     "lib": [
       "dom",
       "dom.iterable",

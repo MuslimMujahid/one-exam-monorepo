@@ -6,8 +6,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@one-exam-monorepo/ui';
-import { auth0 } from '../../lib/auth0';
-import { UserIcon, LogOut, ChevronDown } from 'lucide-react';
+import { AuthServerService } from '../../lib/auth-server';
+import { UserIcon, ChevronDown } from 'lucide-react';
+import { redirect } from 'next/navigation';
+import LogoutButton from '../../components/LogoutButton';
 
 export const metadata = {
   title: 'Dashboard',
@@ -19,60 +21,66 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth0.getSession();
+  // Require authentication and teacher role
+  const session = await AuthServerService.requireRole('TEACHER');
 
   if (!session) {
-    // Redirect to login if not authenticated
-    return (
-      <div className="flex h-screen justify-center items-center bg-gray-50">
-        <div className="text-center p-8 rounded-lg shadow-md bg-white">
-          <p className="mb-4 text-lg font-medium text-gray-700">
-            You must be logged in to access the dashboard.
-          </p>
-          <Button asChild>
-            <a href="/auth/login">Login</a>
-          </Button>
-        </div>
-      </div>
-    );
+    redirect('/login');
   }
 
   return (
-    <div className="dashboard-layout">
-      <header className="bg-white shadow">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-xl font-semibold text-gray-900">One Exam</h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation Header */}
+      <nav className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <h1 className="text-xl font-semibold text-gray-900">
+                Teacher Dashboard
+              </h1>
+            </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
-                {session.user?.name || 'User'}{' '}
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuGroup>
-                <DropdownMenuItem asChild>
-                  <a
-                    href="/dashboard/profile"
-                    className="flex w-full items-center"
+            {/* User Menu */}
+            <div className="flex items-center space-x-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="flex items-center space-x-2"
                   >
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href="/auth/logout" className="flex w-full items-center">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </a>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    <UserIcon className="h-5 w-5" />
+                    <span className="text-sm font-medium">
+                      {session.user.name || session.user.email}
+                    </span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuGroup>
+                    <div className="px-2 py-1.5 text-sm text-gray-600">
+                      <div className="font-medium">
+                        {session.user.name || 'Teacher'}
+                      </div>
+                      <div className="text-xs">{session.user.email}</div>
+                      <div className="text-xs text-blue-600 capitalize">
+                        {session.user.role}
+                      </div>
+                    </div>
+                  </DropdownMenuGroup>
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem asChild>
+                      <LogoutButton />
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
         </div>
-      </header>
-      {children}
+      </nav>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">{children}</main>
     </div>
   );
 }

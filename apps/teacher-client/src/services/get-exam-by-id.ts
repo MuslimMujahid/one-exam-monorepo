@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query';
 import { apiHelpers } from '../lib/axios';
-import { SessionData } from '@auth0/nextjs-auth0/types';
+import { serverApiHelpers } from '../lib/axios-server';
+import { SessionData } from '../types/api';
 
 export type GetExamByIdRes = {
   id: string;
@@ -21,12 +22,15 @@ export type GetExamByIdRes = {
   }[];
 };
 
-export function getExamById(
+export async function getExamById(
   payload: { examId: string },
-  session?: SessionData
+  accessToken?: string
 ) {
-  return apiHelpers
-    .auth(session)
+  const api = accessToken
+    ? apiHelpers.createClientAuth()
+    : await serverApiHelpers.createAuth();
+
+  return api
     .get<GetExamByIdRes>(`/exams/teacher/${payload.examId}`)
     .then((response) => response.data);
 }
@@ -37,6 +41,6 @@ export function getExamByIdQuery(
 ) {
   return queryOptions({
     queryKey: ['exam', payload.examId],
-    queryFn: () => getExamById(payload, session),
+    queryFn: () => getExamById(payload, session?.tokens.accessToken),
   });
 }

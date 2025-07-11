@@ -21,14 +21,12 @@ export interface PaginatedResponse<T> {
   };
 }
 
-// User types (based on Auth0 and your backend)
+// User types (based on custom JWT authentication)
 export interface User {
   id: string;
-  auth0_sub: string;
   email: string;
   name?: string;
-  picture?: string;
-  role: 'teacher' | 'student' | 'admin';
+  role: 'TEACHER' | 'STUDENT' | 'ADMIN';
   createdAt: string;
   updatedAt: string;
 }
@@ -94,4 +92,35 @@ export interface Class {
   studentCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+// DTOs for API operations
+export interface CreateExamDto {
+  title: string;
+  description?: string;
+  startTime: string;
+  duration: number;
+  invitationCode?: string;
+  examCode: string;
+  passKey: string;
+  questions: ExamQuestion[];
+}
+
+export interface UpdateExamDto {
+  title?: string;
+  description?: string;
+  startTime?: string;
+  duration?: number;
+  invitationCode?: string;
+  examCode?: string;
+  passKey?: string;
+  questions?: ExamQuestion[];
+}
+
+export interface SessionData {
+  user: User;
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+  };
 }

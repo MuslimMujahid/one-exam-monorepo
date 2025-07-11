@@ -1,6 +1,14 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Get,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../users/create-user.schema';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -30,5 +38,33 @@ export class AuthController {
     };
 
     return userDto;
+  }
+
+  @Post('refresh')
+  async refresh(@Body() body: { refreshToken: string }) {
+    const { refreshToken } = body;
+
+    try {
+      const tokens = await this.authService.refreshTokens(refreshToken);
+      return tokens;
+    } catch {
+      throw new Error('Invalid refresh token');
+    }
+  }
+
+  @Get('verify')
+  @UseGuards(JwtAuthGuard)
+  async verify(@Request() req: { user: any }) {
+    return {
+      valid: true,
+      user: req.user,
+    };
+  }
+
+  @Post('logout')
+  async logout() {
+    // Since we're using stateless JWT, logout is handled client-side
+    // This endpoint can be used for additional cleanup if needed
+    return { message: 'Logged out successfully' };
   }
 }

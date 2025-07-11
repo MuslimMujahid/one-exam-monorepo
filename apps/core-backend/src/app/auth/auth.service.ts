@@ -50,6 +50,28 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  async refreshTokens(refreshToken: string) {
+    try {
+      const payload = this.jwtService.verify(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
+
+      // Get fresh user data
+      const user = await this.prismaService.user.findUnique({
+        where: { id: payload.sub },
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Generate new tokens
+      return this.getJwtTokens(user);
+    } catch {
+      throw new Error('Invalid refresh token');
+    }
+  }
+
   async registerUser(createUserDto: CreateUserDto) {
     const hashedPassword = await this.hashPassword(createUserDto.password);
     const user = await this.prismaService.user.create({

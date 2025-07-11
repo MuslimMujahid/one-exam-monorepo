@@ -1,9 +1,29 @@
 import type { NextRequest } from 'next/server';
-
-import { auth0 } from './lib/auth0'; // Adjust path if your auth0 client is elsewhere
+import { NextResponse } from 'next/server';
+import {
+  handleAuthentication,
+  isPublicRoute,
+  isRootRoute,
+} from './lib/middleware-auth';
 
 export async function middleware(request: NextRequest) {
-  return await auth0.middleware(request);
+  console.log('Middleware running for:', request.nextUrl.pathname);
+
+  // Allow access to root page
+  if (isRootRoute(request.nextUrl.pathname)) {
+    console.log('Allowing access to root page');
+    return NextResponse.next();
+  }
+
+  // If accessing public route, allow
+  if (isPublicRoute(request.nextUrl.pathname)) {
+    console.log('Allowing access to public route');
+    return NextResponse.next();
+  }
+
+  // Handle authentication for protected routes
+  const authResult = await handleAuthentication(request);
+  return authResult.response;
 }
 
 export const config = {
