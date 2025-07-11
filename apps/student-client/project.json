@@ -4,6 +4,97 @@
   "sourceRoot": "apps/student-client/src",
   "projectType": "application",
   "tags": [],
-  "// targets": "to see all targets run: nx show project student-client --web",
-  "targets": {}
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/student-client"
+      },
+      "configurations": {
+        "development": {
+          "mode": "development"
+        },
+        "production": {
+          "mode": "production"
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nx/vite:dev-server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "student-client:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "student-client:build:development",
+          "hmr": true
+        },
+        "production": {
+          "buildTarget": "student-client:build:production",
+          "hmr": false
+        }
+      }
+    },
+    "preview": {
+      "executor": "@nx/vite:preview-server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "student-client:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "student-client:build:development"
+        },
+        "production": {
+          "buildTarget": "student-client:build:production"
+        }
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{workspaceRoot}/coverage/apps/student-client"]
+    },
+    "lint": {
+      "cache": true,
+      "options": {
+        "cwd": "apps/student-client",
+        "command": "eslint ."
+      },
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/eslint.config.mjs",
+        "{projectRoot}/eslint.config.mjs",
+        "{workspaceRoot}/tools/eslint-rules/**/*",
+        {
+          "externalDependencies": [
+            "eslint"
+          ]
+        }
+      ],
+      "outputs": [
+        "{options.outputFile}"
+      ],
+      "metadata": {
+        "technologies": [
+          "eslint"
+        ],
+        "description": "Runs ESLint on project",
+        "help": {
+          "command": "pnpm exec eslint --help",
+          "example": {
+            "options": {
+              "max-warnings": 0
+            }
+          }
+        }
+      },
+      "executor": "nx:run-commands",
+      "configurations": {},
+      "parallelism": true
+    }
+  }
 }

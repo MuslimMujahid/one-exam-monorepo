@@ -1,11 +1,12 @@
-import { SharedComponent } from '@one-exam-monorepo/ui'
+import React from 'react';
+import { AuthProvider } from '../contexts/AuthContext';
+import { AppRouter } from '../components/Router';
 
 export function App() {
   return (
-    <div>
-      <SharedComponent />
-      <div className="text-pink-500">This text should be pink</div>
-    </div>
+    <AuthProvider>
+      <AppRouter />
+    </AuthProvider>
   );
 }
 

@@ -21,7 +21,7 @@ export default defineConfig({
   //  plugins: [ nxViteTsPaths() ],
   // },
   build: {
-    outDir: '../../dist/apps/one-exam-monorepo',
+    outDir: '../../dist/apps/student-client',
     emptyOutDir: true,
     reportCompressedSize: true,
     commonjsOptions: {
