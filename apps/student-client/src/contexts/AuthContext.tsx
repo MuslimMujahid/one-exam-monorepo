@@ -95,19 +95,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Initialize auth on component mount
   useEffect(() => {
     const initAuth = () => {
-      const user = AuthService.getUserData();
-      const accessToken = AuthService.getAccessToken();
-      const refreshToken = AuthService.getRefreshToken();
+      try {
+        // Clean up any corrupted localStorage data first
+        AuthService.validateAndCleanStorage();
 
-      if (user && accessToken && refreshToken) {
-        dispatch({
-          type: 'INIT_AUTH',
-          payload: {
-            user,
-            tokens: { accessToken, refreshToken },
-          },
-        });
-      } else {
+        const user = AuthService.getUserData();
+        const accessToken = AuthService.getAccessToken();
+        const refreshToken = AuthService.getRefreshToken();
+
+        if (user && accessToken && refreshToken) {
+          dispatch({
+            type: 'INIT_AUTH',
+            payload: {
+              user,
+              tokens: { accessToken, refreshToken },
+            },
+          });
+        } else {
+          dispatch({ type: 'LOGIN_ERROR' });
+        }
+      } catch (error) {
+        console.error('Failed to initialize auth:', error);
+        // Clear potentially corrupted data
+        AuthService.logout();
         dispatch({ type: 'LOGIN_ERROR' });
       }
     };
@@ -120,6 +130,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     try {
       const { user, tokens } = await AuthService.login(credentials);
+      console.log('Login successful:', user, tokens);
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: { user, tokens },

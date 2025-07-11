@@ -34,7 +34,7 @@ export function DashboardPage() {
       setLoading(true);
 
       // Demo mode - show mock data
-      if (user?.email === 'student@example.com') {
+      if (user?.email === 'muslimmujahid1712+student@gmail.com') {
         const mockExams: Exam[] = [
           {
             id: 'demo-exam-1',
@@ -112,7 +112,7 @@ export function DashboardPage() {
       setJoinError('');
 
       // Demo mode - simulate joining an exam
-      if (user?.email === 'student@example.com') {
+      if (user?.email === 'muslimmujahid1712+student@gmail.com') {
         // Simulate API delay
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -544,7 +544,7 @@ export function DashboardPage() {
                     </div>
                   </form>
 
-                  {user?.email === 'student@example.com' && (
+                  {user?.email === 'muslimmujahid1712+student@gmail.com' && (
                     <div className="mt-4 p-3 bg-blue-50 rounded-md">
                       <p className="text-xs text-blue-700">
                         <strong>Demo Mode:</strong> Use exam code "DEMO123" and

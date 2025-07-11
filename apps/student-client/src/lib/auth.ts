@@ -14,32 +14,6 @@ export class AuthService {
   static async login(
     credentials: LoginCredentials
   ): Promise<{ user: User; tokens: AuthTokens }> {
-    // Demo mode - mock successful login for demo purposes
-    if (
-      credentials.email === 'student@example.com' &&
-      credentials.password === 'password123'
-    ) {
-      const mockData = {
-        user: {
-          id: 'demo-student-123',
-          email: 'student@example.com',
-          name: 'Demo Student',
-          role: 'STUDENT' as const,
-        },
-        tokens: {
-          accessToken: 'demo-access-token-' + Date.now(),
-          refreshToken: 'demo-refresh-token-' + Date.now(),
-        },
-      };
-
-      // Store tokens and user data
-      this.setTokens(mockData.tokens);
-      this.setUserData(mockData.user);
-
-      return mockData;
-    }
-
-    // Real API call
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
@@ -55,10 +29,11 @@ export class AuthService {
     }
 
     // Store tokens and user data
-    this.setTokens(data.tokens);
-    this.setUserData(data.user);
+    const { tokens, ...user } = data;
+    this.setTokens(tokens);
+    this.setUserData(user);
 
-    return data;
+    return { user, tokens };
   }
 
   /**
@@ -74,14 +49,16 @@ export class AuthService {
    * Get stored access token
    */
   static getAccessToken(): string | null {
-    return localStorage.getItem(this.ACCESS_TOKEN_KEY);
+    const token = localStorage.getItem(this.ACCESS_TOKEN_KEY);
+    return token && token !== 'undefined' && token !== 'null' ? token : null;
   }
 
   /**
    * Get stored refresh token
    */
   static getRefreshToken(): string | null {
-    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    const token = localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    return token && token !== 'undefined' && token !== 'null' ? token : null;
   }
 
   /**
@@ -89,22 +66,48 @@ export class AuthService {
    */
   static getUserData(): User | null {
     const userData = localStorage.getItem(this.USER_DATA_KEY);
-    return userData ? JSON.parse(userData) : null;
+    if (!userData || userData === 'undefined' || userData === 'null') {
+      return null;
+    }
+    try {
+      return JSON.parse(userData);
+    } catch (error) {
+      console.warn('Failed to parse user data from localStorage:', error);
+      return null;
+    }
   }
 
   /**
    * Store authentication tokens
    */
   static setTokens(tokens: AuthTokens): void {
-    localStorage.setItem(this.ACCESS_TOKEN_KEY, tokens.accessToken);
-    localStorage.setItem(this.REFRESH_TOKEN_KEY, tokens.refreshToken);
+    if (!tokens || !tokens.accessToken || !tokens.refreshToken) {
+      console.warn('Attempted to set invalid tokens');
+      return;
+    }
+    try {
+      localStorage.setItem(this.ACCESS_TOKEN_KEY, tokens.accessToken);
+      localStorage.setItem(this.REFRESH_TOKEN_KEY, tokens.refreshToken);
+    } catch (error) {
+      console.error('Failed to store tokens:', error);
+      throw new Error('Failed to store tokens in localStorage');
+    }
   }
 
   /**
    * Store user data
    */
   static setUserData(user: User): void {
-    localStorage.setItem(this.USER_DATA_KEY, JSON.stringify(user));
+    if (!user) {
+      console.warn('Attempted to set null/undefined user data');
+      return;
+    }
+    try {
+      localStorage.setItem(this.USER_DATA_KEY, JSON.stringify(user));
+    } catch (error) {
+      console.error('Failed to store user data:', error);
+      throw new Error('Failed to store user data in localStorage');
+    }
   }
 
   /**
@@ -188,5 +191,50 @@ export class AuthService {
     }
 
     return response;
+  }
+
+  /**
+   * Validate and clean localStorage data
+   * This method checks for corrupted data and cleans it up
+   */
+  static validateAndCleanStorage(): void {
+    try {
+      // Check if user data is corrupted
+      const userData = localStorage.getItem(this.USER_DATA_KEY);
+      if (userData && (userData === 'undefined' || userData === 'null')) {
+        localStorage.removeItem(this.USER_DATA_KEY);
+      }
+
+      // Check if access token is corrupted
+      const accessToken = localStorage.getItem(this.ACCESS_TOKEN_KEY);
+      if (
+        accessToken &&
+        (accessToken === 'undefined' || accessToken === 'null')
+      ) {
+        localStorage.removeItem(this.ACCESS_TOKEN_KEY);
+      }
+
+      // Check if refresh token is corrupted
+      const refreshToken = localStorage.getItem(this.REFRESH_TOKEN_KEY);
+      if (
+        refreshToken &&
+        (refreshToken === 'undefined' || refreshToken === 'null')
+      ) {
+        localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+      }
+
+      // Try to parse user data if it exists
+      if (userData && userData !== 'undefined' && userData !== 'null') {
+        try {
+          JSON.parse(userData);
+        } catch {
+          localStorage.removeItem(this.USER_DATA_KEY);
+        }
+      }
+    } catch (error) {
+      console.warn('Error while validating localStorage:', error);
+      // If there's any error, clear all auth data to be safe
+      this.logout();
+    }
   }
 }

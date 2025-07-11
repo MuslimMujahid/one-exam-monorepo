@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@one-exam-monorepo/ui';
-import { MockAuthDemo } from '../components/MockAuthDemo';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -21,15 +20,6 @@ export function LoginPage() {
     try {
       await login({ email, password });
       // Navigation will be handled by the routing logic
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-    }
-  };
-
-  const handleMockLogin = async (email: string, password: string) => {
-    setError('');
-    try {
-      await login({ email, password });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     }
@@ -97,8 +87,6 @@ export function LoginPage() {
               {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
           </div>
-
-          <MockAuthDemo onLogin={handleMockLogin} />
         </form>
       </div>
     </div>
