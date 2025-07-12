@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ExamData, Answer } from '../types/exam';
+import { ExamData, Answer, Question } from '../types/exam';
+import { DecryptedExamData } from '../types';
 import {
   ExamNotFound,
   ExamInstructions,
@@ -11,128 +12,7 @@ import {
   QuestionDisplay,
   ExamNavigation,
 } from '../components/exam';
-
-// Mock exam data
-const mockExams: Record<string, ExamData> = {
-  'demo-exam-1': {
-    id: 'demo-exam-1',
-    title: 'Mathematics Final Exam',
-    description:
-      'Comprehensive math exam covering algebra, geometry, and calculus',
-    timeLimit: 120,
-    questions: [
-      {
-        id: 1,
-        type: 'multiple-choice-single',
-        question: 'What is the derivative of x²?',
-        options: ['x', '2x', 'x²', '2x²'],
-        correctAnswer: 1,
-        points: 5,
-      },
-      {
-        id: 2,
-        type: 'multiple-choice-single',
-        question: 'What is the value of π (pi) approximately?',
-        options: ['3.14', '3.41', '4.13', '1.34'],
-        correctAnswer: 0,
-        points: 3,
-      },
-      {
-        id: 3,
-        type: 'multiple-choice-multiple',
-        question:
-          'Which of the following are prime numbers? (Select all that apply)',
-        options: ['2', '4', '7', '9', '11'],
-        correctAnswer: [0, 2, 4],
-        points: 8,
-      },
-      {
-        id: 4,
-        type: 'multiple-choice-single',
-        question: 'The square root of 16 is:',
-        options: ['2', '4', '8', '16'],
-        correctAnswer: 1,
-        points: 2,
-      },
-      {
-        id: 5,
-        type: 'text',
-        question:
-          'Explain the Pythagorean theorem and provide an example of its application.',
-        points: 15,
-      },
-    ],
-  },
-  'demo-exam-2': {
-    id: 'demo-exam-2',
-    title: 'History Midterm',
-    description: 'European history from 1800-1950',
-    timeLimit: 90,
-    questions: [
-      {
-        id: 1,
-        type: 'multiple-choice-single',
-        question: 'In which year did World War I begin?',
-        options: ['1912', '1914', '1916', '1918'],
-        correctAnswer: 1,
-        points: 5,
-      },
-      {
-        id: 2,
-        type: 'multiple-choice-multiple',
-        question:
-          'Which countries were part of the Central Powers in WWI? (Select all that apply)',
-        options: [
-          'Germany',
-          'France',
-          'Austria-Hungary',
-          'Ottoman Empire',
-          'Russia',
-        ],
-        correctAnswer: [0, 2, 3],
-        points: 10,
-      },
-      {
-        id: 3,
-        type: 'text',
-        question:
-          'Discuss the causes and consequences of the Industrial Revolution.',
-        points: 20,
-      },
-    ],
-  },
-  'demo-exam-3': {
-    id: 'demo-exam-3',
-    title: 'Science Quiz',
-    description: 'Basic physics and chemistry concepts',
-    timeLimit: 60,
-    questions: [
-      {
-        id: 1,
-        type: 'multiple-choice-single',
-        question: 'Water boils at what temperature at sea level?',
-        options: ['90°C', '100°C', '110°C', '120°C'],
-        correctAnswer: 1,
-        points: 3,
-      },
-      {
-        id: 2,
-        type: 'multiple-choice-multiple',
-        question:
-          'Which of the following are noble gases? (Select all that apply)',
-        options: ['Helium', 'Oxygen', 'Neon', 'Nitrogen', 'Argon'],
-        correctAnswer: [0, 2, 4],
-        points: 5,
-      },
-      {
-        id: 3,
-        type: 'text',
-        question: 'Explain the difference between an atom and a molecule.',
-        points: 7,
-      },
-    ],
-  },
-};
+import { AlertBanner, LoadingSpinner } from '@one-exam-monorepo/ui';
 
 export function ExamPage() {
   const { user } = useAuth();
@@ -146,8 +26,67 @@ export function ExamPage() {
   const [examStarted, setExamStarted] = useState(false);
   const [examSubmitted, setExamSubmitted] = useState(false);
 
-  // Get exam data
-  const examData = examId ? mockExams[examId] : null;
+  // New state for real exam data
+  const [examData, setExamData] = useState<ExamData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isElectronAvailable, setIsElectronAvailable] = useState(false);
+
+  // Check if electron is available and load exam data
+  useEffect(() => {
+    const loadExamData = async () => {
+      if (!examId) {
+        setError('No exam ID provided');
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if running in electron
+      if (typeof window !== 'undefined' && window.electron) {
+        setIsElectronAvailable(true);
+
+        try {
+          console.log(`Loading exam data for: ${examId}`);
+
+          // The examId parameter now contains the examCode (passed from dashboard)
+          // Try to decrypt using the examId as examCode
+          const decryptedData: DecryptedExamData =
+            await window.electron.decryptExamData(
+              examId, // examId now contains examCode
+              user?.id // Pass user ID for validation
+            );
+
+          console.log('Successfully decrypted exam data:', decryptedData.title);
+
+          // Convert DecryptedExamData to ExamData format expected by the UI
+          const examData: ExamData = {
+            id: decryptedData.id,
+            title: decryptedData.title,
+            description: decryptedData.description,
+            timeLimit: 120, // Default timeLimit - you may want to add this to DecryptedExamData
+            questions: decryptedData.questions as Question[], // Cast to Question[] type
+          };
+
+          setExamData(examData);
+          setError(null);
+        } catch (err) {
+          console.error('Failed to load/decrypt exam data:', err);
+          const errorMessage =
+            err instanceof Error ? err.message : 'Failed to load exam data';
+          setError(errorMessage);
+        }
+      } else {
+        // Running in browser mode - Electron not available
+        setError(
+          'This application requires the desktop version to access offline exams'
+        );
+      }
+
+      setIsLoading(false);
+    };
+
+    loadExamData();
+  }, [examId, user?.id]);
 
   // Initialize timer when exam starts
   useEffect(() => {
@@ -230,6 +169,38 @@ export function ExamPage() {
   };
 
   // Render different states
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner className="mx-auto mb-4" />
+          <p className="text-gray-600">Loading exam data...</p>
+          {isElectronAvailable && (
+            <p className="text-sm text-gray-500 mt-2">
+              Decrypting exam content
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md mx-auto text-center">
+          <AlertBanner type="error" message={error} className="mb-4" />
+          <button
+            onClick={handleBackToDashboard}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!examData) {
     return <ExamNotFound onBackToDashboard={handleBackToDashboard} />;
   }

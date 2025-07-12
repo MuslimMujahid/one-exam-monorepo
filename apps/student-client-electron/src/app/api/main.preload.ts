@@ -17,4 +17,8 @@ contextBridge.exposeInMainWorld('electron', {
   clearExamData: (examCode: string) =>
     ipcRenderer.invoke('clear-exam-data', examCode),
   clearAllExamData: () => ipcRenderer.invoke('clear-all-exam-data'),
+  // New methods for decryption
+  decryptExamData: (examCode: string, userId?: string) =>
+    ipcRenderer.invoke('decrypt-exam-data', examCode, userId),
+  getClientConfig: () => ipcRenderer.invoke('get-client-config'),
 });

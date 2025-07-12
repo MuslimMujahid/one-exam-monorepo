@@ -4,6 +4,18 @@ import type { DownloadExamResponse } from './exam';
 export * from './auth';
 export * from './exam';
 
+// Decrypted exam data interface
+export interface DecryptedExamData {
+  id: string;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  examCode: string;
+  questions: unknown[];
+  teacherName: string;
+}
+
 // Electron window interface
 declare global {
   interface Window {
@@ -17,6 +29,15 @@ declare global {
       clearAllExamData: () => Promise<number>;
       getAppVersion: () => Promise<string>;
       platform: string;
+      // New decryption methods
+      decryptExamData: (
+        examCode: string,
+        userId?: string
+      ) => Promise<DecryptedExamData>;
+      getClientConfig: () => Promise<{
+        publicKey: string;
+        licenseEncryptionKey: string;
+      }>;
     };
   }
 }

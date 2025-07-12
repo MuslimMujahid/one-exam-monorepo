@@ -7,7 +7,8 @@
     "student/all:start:dev": "nx run-many --target=serve --projects=student-client,student-client-electron,core-backend --parallel",
     "student/client:start:dev": "nx run-many --target=serve --projects=student-client,student-client-electron --parallel",
     "teacher/all:start:dev": "nx run-many --target=serve --projects=teacher-client,core-backend --parallel",
-    "teacher/client:start:dev:client-only": "nx server teacher-client"
+    "teacher/client:start:dev:client-only": "nx server teacher-client",
+    "reset-keys": "node generate-keys.js"
   },
   "private": true,
   "dependencies": {

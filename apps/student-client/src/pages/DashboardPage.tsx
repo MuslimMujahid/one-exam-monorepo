@@ -136,7 +136,16 @@ export function DashboardPage() {
   };
 
   const handleTakeExam = (examId: string) => {
-    navigate(`/exam/${examId}`);
+    // Find the exam to get its examCode for offline storage
+    const exam = exams.find((e) => e.id === examId);
+    if (exam) {
+      // Use examCode for offline exam access
+      navigate(`/exam/${exam.examCode}`);
+    } else {
+      console.error('Exam not found for ID:', examId);
+      // Fallback to using examId directly (for backward compatibility)
+      navigate(`/exam/${examId}`);
+    }
   };
 
   // Calculate stats for the stats grid

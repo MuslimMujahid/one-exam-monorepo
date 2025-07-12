@@ -11,7 +11,10 @@
         "outputPath": "dist/apps/student-client-electron",
         "main": "apps/student-client-electron/src/main.ts",
         "tsConfig": "apps/student-client-electron/tsconfig.app.json",
-        "assets": ["apps/student-client-electron/src/assets"]
+        "assets": [
+          "apps/student-client-electron/src/assets",
+          "apps/student-client-electron/src/keys"
+        ]
       },
       "configurations": {
         "production": {

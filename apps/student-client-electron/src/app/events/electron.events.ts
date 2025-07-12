@@ -122,6 +122,67 @@ ipcMain.handle('clear-all-exam-data', async () => {
   }
 });
 
+// Decrypt exam data using embedded license and keys
+ipcMain.handle(
+  'decrypt-exam-data',
+  async (_, examCode: string, userId?: string) => {
+    console.log(
+      `Decrypting exam data for exam code: ${examCode}, userId: ${userId}`
+    );
+    try {
+      const { ElectronCrypto } = await import('../lib/crypto');
+
+      // First load the encrypted exam data
+      const userDataPath = app.getPath('userData');
+      const examsDir = join(userDataPath, OFFLINE_EXAM_CONFIG.EXAMS_DIRECTORY);
+      const filePath = join(
+        examsDir,
+        `${examCode}${OFFLINE_EXAM_CONFIG.EXAM_FILE_EXTENSION}`
+      );
+
+      const rawData = await fs.readFile(filePath, 'utf-8');
+      const downloadedData = JSON.parse(rawData);
+
+      // Process and decrypt the exam data
+      const decryptedExamData = ElectronCrypto.processOfflineExam(
+        downloadedData,
+        userId
+      );
+
+      if (!decryptedExamData) {
+        throw new Error('Failed to decrypt exam data');
+      }
+
+      console.log(`Successfully decrypted exam data for: ${examCode}`);
+      return decryptedExamData;
+    } catch (error) {
+      console.error('Failed to decrypt exam data:', error);
+
+      // Return more specific error messages
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw new Error(`Exam data not found for exam code: ${examCode}`);
+      }
+
+      if (error instanceof Error) {
+        throw error;
+      }
+
+      throw new Error('Unknown error occurred during decryption');
+    }
+  }
+);
+
+// Get client configuration (for debugging or future use)
+ipcMain.handle('get-client-config', async () => {
+  try {
+    const { ElectronCrypto } = await import('../lib/crypto');
+    return ElectronCrypto.getClientConfig();
+  } catch (error) {
+    console.error('Failed to get client config:', error);
+    throw error;
+  }
+});
+
 // Handle App termination
 ipcMain.on('quit', (event, code) => {
   app.exit(code);

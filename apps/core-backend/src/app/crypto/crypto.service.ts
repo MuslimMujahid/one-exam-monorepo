@@ -17,7 +17,7 @@ export interface LicenseData {
 @Injectable()
 export class CryptoService implements OnModuleInit {
   private readonly RSA_KEY_SIZE = 2048;
-  private readonly AES_ALGORITHM = 'aes-256-cbc';
+  private readonly AES_ALGORITHM = 'aes-256-gcm';
   private readonly RSA_ALGORITHM = 'RSA-PKCS1-PSS';
   private readonly HASH_ALGORITHM = 'sha256';
 
@@ -25,7 +25,25 @@ export class CryptoService implements OnModuleInit {
   private publicKey: string;
   private licenseEncryptionKey: string;
 
-  private readonly keysDirectory = path.join(process.cwd(), 'keys');
+  private readonly keysDirectory = this.getKeysDirectory();
+
+  private getKeysDirectory(): string {
+    // In development, __dirname is like: apps/core-backend/src/app/crypto
+    // In production, __dirname is like: dist/apps/core-backend
+    // Try production path first, then development path
+    const productionPath = path.join(__dirname, 'keys');
+    const developmentPath = path.join(__dirname, '../../../keys');
+
+    if (fs.existsSync(productionPath)) {
+      return productionPath;
+    } else if (fs.existsSync(developmentPath)) {
+      return developmentPath;
+    } else {
+      throw new Error(
+        `Keys directory not found. Checked: ${productionPath}, ${developmentPath}`
+      );
+    }
+  }
 
   async onModuleInit() {
     await this.initializeKeys();
@@ -36,6 +54,9 @@ export class CryptoService implements OnModuleInit {
    * This should be called during application startup
    */
   private async initializeKeys() {
+    console.log('CryptoService: Using keys directory:', this.keysDirectory);
+    console.log('CryptoService: __dirname:', __dirname);
+
     // Ensure keys directory exists
     if (!fs.existsSync(this.keysDirectory)) {
       fs.mkdirSync(this.keysDirectory, { recursive: true });
@@ -90,14 +111,18 @@ export class CryptoService implements OnModuleInit {
    * Encrypt exam content with the exam's encryption key
    */
   encryptExamContent(content: string, examEncryptionKey: string): string {
-    const iv = crypto.randomBytes(16);
+    const iv = crypto.randomBytes(12); // GCM typically uses 12 bytes for IV
     const key = Buffer.from(examEncryptionKey, 'hex');
     const cipher = crypto.createCipheriv(this.AES_ALGORITHM, key, iv);
 
     let encrypted = cipher.update(content, 'utf8', 'hex');
     encrypted += cipher.final('hex');
 
-    return `${iv.toString('hex')}:${encrypted}`;
+    // Get the authentication tag for GCM mode
+    const authTag = cipher.getAuthTag();
+
+    // Format: iv:encrypted:authTag (all in hex)
+    return `${iv.toString('hex')}:${encrypted}:${authTag.toString('hex')}`;
   }
 
   /**
@@ -111,14 +136,21 @@ export class CryptoService implements OnModuleInit {
    * Encrypt license file with the license encryption key
    */
   encryptLicenseFile(licenseContent: string): string {
-    const iv = crypto.randomBytes(16);
+    const iv = crypto.randomBytes(12); // GCM typically uses 12 bytes for IV
     const key = Buffer.from(this.licenseEncryptionKey, 'hex');
     const cipher = crypto.createCipheriv(this.AES_ALGORITHM, key, iv);
 
     let encrypted = cipher.update(licenseContent, 'utf8', 'hex');
     encrypted += cipher.final('hex');
 
-    return `${iv.toString('hex')}:${encrypted}`;
+    // Get the authentication tag for GCM mode
+    const authTag = cipher.getAuthTag();
+
+    // Format: iv:encrypted:authTag (all in hex), then base64 encode the whole thing
+    const combined = `${iv.toString('hex')}:${encrypted}:${authTag.toString(
+      'hex'
+    )}`;
+    return Buffer.from(combined, 'utf8').toString('base64');
   }
 
   /**
@@ -139,10 +171,8 @@ export class CryptoService implements OnModuleInit {
     const encryptedLicense = this.encryptLicenseFile(licenseContent);
     const signature = this.signLicenseFile(encryptedLicense);
 
-    // Combine encrypted license and signature separated by newline
-    const signedLicense = `${encryptedLicense}\n${signature}`;
-
-    return Buffer.from(signedLicense, 'utf8').toString('base64');
+    // Combine encrypted license and signature separated by colon
+    return `${encryptedLicense}:${signature}`;
   }
 
   /**
