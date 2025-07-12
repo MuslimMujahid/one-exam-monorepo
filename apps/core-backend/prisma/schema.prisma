@@ -21,15 +21,22 @@ enum UserRole {
   TEACHER
 }
 
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+}
+
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
+  id        String        @id @default(uuid())
+  email     String        @unique
   password  String
   name      String?
-  role      UserRole @default(STUDENT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      UserRole      @default(STUDENT)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   exams     Exam[]
+  sessions  ExamSession[]
 }
 
 model Exam {
@@ -58,16 +65,34 @@ model Question {
   examId       String
   exam         Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
   attachments  Attachment[]
+  answers      ExamAnswer[]
 }
 
 model ExamSession {
-  id        String    @id @default(uuid())
-  startTime DateTime  @default(now())
+  id        String        @id @default(uuid())
+  startTime DateTime      @default(now())
   endTime   DateTime?
-  status    String
+  status    SessionStatus @default(IN_PROGRESS)
   score     Float?
   examId    String
-  exam      Exam      @relation(fields: [examId], references: [id])
+  exam      Exam          @relation(fields: [examId], references: [id])
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  answers   ExamAnswer[]
+
+  @@unique([examId, userId])
+}
+
+model ExamAnswer {
+  id          String      @id @default(uuid())
+  answer      Json
+  submittedAt DateTime    @default(now())
+  sessionId   String
+  session     ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId  String
+  question    Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, questionId])
 }
 
 model Attachment {

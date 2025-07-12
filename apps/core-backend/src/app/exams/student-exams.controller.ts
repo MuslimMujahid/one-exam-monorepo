@@ -18,6 +18,11 @@ export class StudentExamsController {
     return this.studentExamService.getAllExams(user);
   }
 
+  @Get('available')
+  async getAvailableExams(@User() user: UserFromJwt) {
+    return this.studentExamService.getAvailableExams(user);
+  }
+
   @Post('join')
   async joinExam(@Body() dto: JoinExamDto, @User() user: UserFromJwt) {
     return this.studentExamService.joinExam(user, dto);

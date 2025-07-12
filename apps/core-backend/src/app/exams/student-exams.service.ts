@@ -27,6 +27,59 @@ export class StudentExamService {
     }));
   }
 
+  async getAvailableExams(user: UserFromJwt) {
+    const now = new Date();
+
+    // Get exams the user is enrolled in that are currently available for taking
+    const availableExams = await this.prismaService.exam.findMany({
+      where: {
+        status: 'PUBLISHED',
+        startDate: { lte: now },
+        endDate: { gte: now },
+        user: {
+          exams: {
+            some: {
+              id: user.userId,
+            },
+          },
+        },
+      },
+      include: {
+        questions: {
+          select: {
+            id: true,
+            text: true,
+            questionType: true,
+            points: true,
+          },
+        },
+        sessions: {
+          where: {
+            userId: user.userId,
+          },
+          orderBy: {
+            startTime: 'desc',
+          },
+          take: 1,
+        },
+      },
+    });
+
+    return availableExams.map((exam) => ({
+      id: exam.id,
+      title: exam.title,
+      description: exam.description,
+      startDate: exam.startDate,
+      endDate: exam.endDate,
+      questionsCount: exam.questions.length,
+      totalPoints: exam.questions.reduce((sum, q) => sum + q.points, 0),
+      hasActiveSession:
+        exam.sessions.length > 0 && exam.sessions[0].endTime === null,
+      lastSessionScore:
+        exam.sessions.length > 0 ? exam.sessions[0].score : null,
+    }));
+  }
+
   async joinExam(user: UserFromJwt, dto: JoinExamDto) {
     const now = new Date();
     const exam = await this.prismaService.exam.findUnique({
