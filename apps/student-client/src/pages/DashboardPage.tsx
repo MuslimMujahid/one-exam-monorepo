@@ -290,7 +290,17 @@ export function DashboardPage() {
                           </div>
                         </div>
 
-                        <div className="mt-6">
+                        <div className="mt-6 space-y-2">
+                          <Button
+                            onClick={() => {
+                              // TODO: Implement preload exam functionality
+                              console.log('Preload exam:', exam.id);
+                            }}
+                            variant="outline"
+                            className="w-full text-green-600 border-green-600 hover:bg-green-50"
+                          >
+                            Preload Exam
+                          </Button>
                           {canTakeExam(exam) ? (
                             <Button
                               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
