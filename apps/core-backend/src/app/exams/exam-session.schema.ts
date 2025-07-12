@@ -1,22 +1,13 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-// Offline exam prefetch schema
+// Offline exam prefetch schema - now returns encrypted content and signed license
 export const prefetchExamSchema = z.object({
   examCode: z.string(),
 });
 
-// Request encryption key schema
-export const requestDecryptionKeySchema = z.object({
-  examCode: z.string(),
-  deviceId: z.string(),
-});
-
-// Start offline exam session schema
-export const startExamSessionSchema = z.object({
-  examCode: z.string(),
-  decryptionKey: z.string(),
-});
+// Remove the old requestDecryptionKeySchema and startExamSessionSchema since
+// they are no longer needed with the new license-based approach
 
 export const submitAnswerSchema = z.object({
   questionId: z.string().uuid(),
@@ -43,13 +34,13 @@ export const syncOfflineAnswersSchema = z.object({
   ),
 });
 
+// New schema for getting client configuration (public key and license encryption key)
+export const getClientConfigSchema = z.object({});
+
 export class PrefetchExamDto extends createZodDto(prefetchExamSchema) {}
-export class RequestDecryptionKeyDto extends createZodDto(
-  requestDecryptionKeySchema
-) {}
-export class StartExamSessionDto extends createZodDto(startExamSessionSchema) {}
 export class SubmitAnswerDto extends createZodDto(submitAnswerSchema) {}
 export class EndExamSessionDto extends createZodDto(endExamSessionSchema) {}
 export class SyncOfflineAnswersDto extends createZodDto(
   syncOfflineAnswersSchema
 ) {}
+export class GetClientConfigDto extends createZodDto(getClientConfigSchema) {}

@@ -40,20 +40,21 @@ model User {
 }
 
 model Exam {
-  id          String        @id @default(uuid())
-  title       String
-  description String?
-  startDate   DateTime
-  endDate     DateTime
-  examCode    String        @unique
-  passKey     String
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  userId      String
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  questions   Question[]
-  sessions    ExamSession[]
-  status      ExamStatus    @default(DRAFT)
+  id            String        @id @default(uuid())
+  title         String
+  description   String?
+  startDate     DateTime
+  endDate       DateTime
+  examCode      String        @unique
+  passKey       String
+  encryptionKey String? // Unique symmetric key for encrypting exam content
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions     Question[]
+  sessions      ExamSession[]
+  status        ExamStatus    @default(DRAFT)
 }
 
 model Question {
