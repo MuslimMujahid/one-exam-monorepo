@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { UserFromJwt } from '../auth/jwt.strategy';
 import { PrismaService } from '../prisma/prisma.service';
 import { JoinExamDto } from './join-exam.schema';
 
 @Injectable()
 export class StudentExamService {
+  private readonly logger = new Logger(StudentExamService.name);
+
   constructor(private readonly prismaService: PrismaService) {}
 
   async getAllExams(user: UserFromJwt) {

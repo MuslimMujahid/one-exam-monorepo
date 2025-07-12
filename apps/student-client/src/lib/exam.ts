@@ -22,20 +22,57 @@ export class ExamService {
    * Join an exam using exam code and pass key
    */
   static async joinExam(request: JoinExamRequest): Promise<void> {
-    const response = await AuthService.authenticatedFetch('/exams/join', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        examCode: request.examCode.trim(),
-        passKey: request.passKey.trim(),
-      }),
-    });
+    const response = await AuthService.authenticatedFetch(
+      '/exams/student/join',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          examCode: request.examCode.trim(),
+          passKey: request.passKey.trim(),
+        }),
+      }
+    );
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to join exam');
+      let errorMessage = 'Failed to join exam';
+
+      try {
+        const errorData = await response.json();
+        // Handle different error response formats
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      } catch {
+        // If JSON parsing fails, use status-based error messages
+        switch (response.status) {
+          case 400:
+            errorMessage = 'Invalid exam code or pass key';
+            break;
+          case 401:
+            errorMessage = 'Authentication required';
+            break;
+          case 403:
+            errorMessage = 'Access denied';
+            break;
+          case 404:
+            errorMessage = 'Exam not found or no longer available';
+            break;
+          case 500:
+            errorMessage = 'Server error occurred';
+            break;
+          default:
+            errorMessage = `Request failed with status ${response.status}`;
+        }
+      }
+
+      throw new Error(errorMessage);
     }
 
     // Consume the response
@@ -144,5 +181,13 @@ export class ExamService {
   static getFormattedTimeUntilStart(exam: Exam): string {
     const timeUntilStart = ExamService.getTimeUntilStart(exam);
     return ExamService.formatTimeDuration(timeUntilStart);
+  }
+
+  /**
+   * Get formatted time until exam ends
+   */
+  static getFormattedTimeUntilEnd(exam: Exam): string {
+    const timeUntilEnd = ExamService.getTimeUntilEnd(exam);
+    return ExamService.formatTimeDuration(timeUntilEnd);
   }
 }

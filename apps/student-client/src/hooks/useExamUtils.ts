@@ -14,6 +14,7 @@ export function useExamUtils() {
     formatExamTime: ExamService.formatExamTime,
     formatTimeDuration: ExamService.formatTimeDuration,
     getFormattedTimeUntilStart: ExamService.getFormattedTimeUntilStart,
+    getFormattedTimeUntilEnd: ExamService.getFormattedTimeUntilEnd,
 
     /**
      * Filter exams by status

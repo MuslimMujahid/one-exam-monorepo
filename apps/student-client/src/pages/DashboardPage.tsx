@@ -18,14 +18,19 @@ export function DashboardPage() {
   } = useStudentExams();
 
   const joinExamMutation = useJoinExam();
-  const { getExamStatus, canTakeExam, getFormattedTimeUntilStart } =
-    useExamUtils();
+  const {
+    getExamStatus,
+    canTakeExam,
+    getFormattedTimeUntilStart,
+    getFormattedTimeUntilEnd,
+  } = useExamUtils();
 
   // Join exam modal state
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [examCode, setExamCode] = useState('');
   const [passKey, setPassKey] = useState('');
   const [joinError, setJoinError] = useState('');
+  const [joinSuccess, setJoinSuccess] = useState('');
 
   // Convert query error to string for display
   const error = isError
@@ -37,25 +42,42 @@ export function DashboardPage() {
   const handleJoinExam = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!examCode.trim() || !passKey.trim()) {
-      setJoinError('Please enter both exam code and pass key');
+    // Clear previous messages
+    setJoinError('');
+    setJoinSuccess('');
+
+    // Validate input
+    const trimmedExamCode = examCode.trim();
+    const trimmedPassKey = passKey.trim();
+
+    if (!trimmedExamCode) {
+      setJoinError('Please enter an exam code');
       return;
     }
 
-    setJoinError('');
+    if (!trimmedPassKey) {
+      setJoinError('Please enter a pass key');
+      return;
+    }
 
     try {
       await joinExamMutation.mutateAsync({
-        examCode: examCode.trim(),
-        passKey: passKey.trim(),
+        examCode: trimmedExamCode,
+        passKey: trimmedPassKey,
       });
 
-      // Close modal and clear form on success
-      setShowJoinModal(false);
-      setExamCode('');
-      setPassKey('');
+      // Show success message and close modal after a delay
+      setJoinSuccess('Successfully joined exam!');
+      setTimeout(() => {
+        setShowJoinModal(false);
+        setExamCode('');
+        setPassKey('');
+        setJoinSuccess('');
+      }, 1500);
     } catch (err) {
-      setJoinError(err instanceof Error ? err.message : 'Failed to join exam');
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to join exam';
+      setJoinError(errorMessage);
     }
   };
 
@@ -250,6 +272,14 @@ export function DashboardPage() {
                               </span>
                             </div>
                           )}
+                          {status.text === 'Active' && (
+                            <div>
+                              <span className="font-medium">Ends in:</span>{' '}
+                              <span className="text-red-600 font-semibold">
+                                {getFormattedTimeUntilEnd(exam)}
+                              </span>
+                            </div>
+                          )}
                           <div>
                             <span className="font-medium">Questions:</span>{' '}
                             {exam.questionsCount} questions
@@ -304,6 +334,7 @@ export function DashboardPage() {
                         setExamCode('');
                         setPassKey('');
                         setJoinError('');
+                        setJoinSuccess('');
                       }}
                       className="text-gray-400 hover:text-gray-600"
                     >
@@ -330,6 +361,14 @@ export function DashboardPage() {
                       </div>
                     )}
 
+                    {joinSuccess && (
+                      <div className="rounded-md bg-green-50 p-4">
+                        <div className="text-sm text-green-700">
+                          {joinSuccess}
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       <label
                         htmlFor="examCode"
@@ -345,6 +384,7 @@ export function DashboardPage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Enter exam code"
                         disabled={joinExamMutation.isPending}
+                        required
                       />
                     </div>
 
@@ -363,6 +403,7 @@ export function DashboardPage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Enter pass key"
                         disabled={joinExamMutation.isPending}
+                        required
                       />
                     </div>
 
@@ -375,6 +416,7 @@ export function DashboardPage() {
                           setExamCode('');
                           setPassKey('');
                           setJoinError('');
+                          setJoinSuccess('');
                         }}
                         disabled={joinExamMutation.isPending}
                         className="flex-1"
