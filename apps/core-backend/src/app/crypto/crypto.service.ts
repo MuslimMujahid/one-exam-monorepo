@@ -17,7 +17,7 @@ export interface LicenseData {
 @Injectable()
 export class CryptoService implements OnModuleInit {
   private readonly RSA_KEY_SIZE = 2048;
-  private readonly AES_ALGORITHM = 'aes-256-gcm';
+  private readonly AES_ALGORITHM = 'aes-256-cbc';
   private readonly RSA_ALGORITHM = 'RSA-PKCS1-PSS';
   private readonly HASH_ALGORITHM = 'sha256';
 
@@ -92,7 +92,7 @@ export class CryptoService implements OnModuleInit {
   encryptExamContent(content: string, examEncryptionKey: string): string {
     const iv = crypto.randomBytes(16);
     const key = Buffer.from(examEncryptionKey, 'hex');
-    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+    const cipher = crypto.createCipheriv(this.AES_ALGORITHM, key, iv);
 
     let encrypted = cipher.update(content, 'utf8', 'hex');
     encrypted += cipher.final('hex');
@@ -113,7 +113,7 @@ export class CryptoService implements OnModuleInit {
   encryptLicenseFile(licenseContent: string): string {
     const iv = crypto.randomBytes(16);
     const key = Buffer.from(this.licenseEncryptionKey, 'hex');
-    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+    const cipher = crypto.createCipheriv(this.AES_ALGORITHM, key, iv);
 
     let encrypted = cipher.update(licenseContent, 'utf8', 'hex');
     encrypted += cipher.final('hex');
@@ -125,7 +125,7 @@ export class CryptoService implements OnModuleInit {
    * Sign the encrypted license file with the private key
    */
   signLicenseFile(encryptedLicense: string): string {
-    const signer = crypto.createSign('sha256');
+    const signer = crypto.createSign(this.HASH_ALGORITHM);
     signer.update(encryptedLicense);
     signer.end();
     return signer.sign(this.privateKey, 'base64');
@@ -164,7 +164,7 @@ export class CryptoService implements OnModuleInit {
    */
   verifyLicenseSignature(encryptedLicense: string, signature: string): boolean {
     try {
-      const verifier = crypto.createVerify('sha256');
+      const verifier = crypto.createVerify(this.HASH_ALGORITHM);
       verifier.update(encryptedLicense);
       verifier.end();
       return verifier.verify(this.publicKey, signature, 'base64');
@@ -181,7 +181,7 @@ export class CryptoService implements OnModuleInit {
       const [ivHex, encrypted] = encryptedLicense.split(':');
       const iv = Buffer.from(ivHex, 'hex');
       const key = Buffer.from(this.licenseEncryptionKey, 'hex');
-      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      const decipher = crypto.createDecipheriv(this.AES_ALGORITHM, key, iv);
 
       let decrypted = decipher.update(encrypted, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
