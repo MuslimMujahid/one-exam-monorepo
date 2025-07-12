@@ -22,3 +22,27 @@ export interface ExamStatus {
   text: 'Draft' | 'Scheduled' | 'Active' | 'Completed';
   color: string;
 }
+
+// Exam taking interfaces
+export interface Question {
+  id: number;
+  type: 'text' | 'multiple-choice-single' | 'multiple-choice-multiple';
+  question: string;
+  options?: string[];
+  correctAnswer?: string | number | number[];
+  points: number;
+}
+
+export interface Answer {
+  questionId: number;
+  answer: string | number | number[];
+  timeSpent: number;
+}
+
+export interface ExamData {
+  id: string;
+  title: string;
+  description: string;
+  timeLimit: number; // in minutes
+  questions: Question[];
+}
