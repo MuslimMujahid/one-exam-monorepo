@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useStudentExams, useJoinExam } from '../hooks/useExams';
+import {
+  useStudentExams,
+  useJoinExam,
+  usePreloadExam,
+  usePreloadedExams,
+} from '../hooks/useExams';
 import { useExamUtils } from '../hooks/useExamUtils';
 import { Button } from '@one-exam-monorepo/ui';
 
@@ -18,6 +23,12 @@ export function DashboardPage() {
   } = useStudentExams();
 
   const joinExamMutation = useJoinExam();
+  const preloadExamMutation = usePreloadExam();
+
+  // Check which exams are already preloaded
+  const { data: preloadedExams = {}, refetch: refetchPreloadedStatus } =
+    usePreloadedExams(exams);
+
   const {
     getExamStatus,
     canTakeExam,
@@ -31,6 +42,12 @@ export function DashboardPage() {
   const [passKey, setPassKey] = useState('');
   const [joinError, setJoinError] = useState('');
   const [joinSuccess, setJoinSuccess] = useState('');
+
+  // Preload exam state
+  const [preloadingExams, setPreloadingExams] = useState<Set<string>>(
+    new Set()
+  );
+  const [preloadSuccess, setPreloadSuccess] = useState<string>('');
 
   // Convert query error to string for display
   const error = isError
@@ -81,6 +98,29 @@ export function DashboardPage() {
     }
   };
 
+  const handlePreloadExam = async (examCode: string) => {
+    try {
+      setPreloadingExams((prev) => new Set(prev).add(examCode));
+
+      await preloadExamMutation.mutateAsync(examCode);
+
+      setPreloadSuccess(`Exam preloaded successfully for offline access!`);
+      setTimeout(() => setPreloadSuccess(''), 3000);
+
+      // Refresh preloaded status after successful preload
+      refetchPreloadedStatus();
+    } catch (error) {
+      console.error('Failed to preload exam:', error);
+      // Error handling is already done in the mutation's onError
+    } finally {
+      setPreloadingExams((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(examCode);
+        return newSet;
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -123,6 +163,12 @@ export function DashboardPage() {
             </div>
           )}
 
+          {preloadSuccess && (
+            <div className="mb-6 rounded-md bg-green-50 p-4">
+              <div className="text-sm text-green-700">{preloadSuccess}</div>
+            </div>
+          )}
+
           {/* Exams Grid */}
           <div className="mb-8">
             <div className="flex justify-between items-center mb-6">
@@ -138,7 +184,7 @@ export function DashboardPage() {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-6">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-6">
               <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="p-5">
                   <div className="flex items-center">
@@ -219,6 +265,31 @@ export function DashboardPage() {
                   </div>
                 </div>
               </div>
+
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
+                        <span className="text-white text-sm font-semibold">
+                          {Object.values(preloadedExams).filter(Boolean).length}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">
+                          Preloaded
+                        </dt>
+                        <dd className="text-lg font-medium text-gray-900">
+                          {Object.values(preloadedExams).filter(Boolean).length}{' '}
+                          exams
+                        </dd>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {exams.length === 0 ? (
@@ -287,19 +358,36 @@ export function DashboardPage() {
                           <div>
                             <span className="font-medium">Code:</span>{' '}
                             {exam.examCode}
+                            {preloadedExams[exam.examCode] && (
+                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <span role="img" aria-label="Mobile device">
+                                  📱
+                                </span>{' '}
+                                Preloaded
+                              </span>
+                            )}
                           </div>
                         </div>
 
                         <div className="mt-6 space-y-2">
                           <Button
-                            onClick={() => {
-                              // TODO: Implement preload exam functionality
-                              console.log('Preload exam:', exam.id);
-                            }}
+                            onClick={() => handlePreloadExam(exam.examCode)}
                             variant="outline"
-                            className="w-full text-green-600 border-green-600 hover:bg-green-50"
+                            className={`w-full ${
+                              preloadedExams[exam.examCode]
+                                ? 'text-green-700 border-green-700 bg-green-50'
+                                : 'text-green-600 border-green-600 hover:bg-green-50'
+                            }`}
+                            disabled={
+                              preloadingExams.has(exam.examCode) ||
+                              preloadedExams[exam.examCode]
+                            }
                           >
-                            Preload Exam
+                            {preloadingExams.has(exam.examCode)
+                              ? 'Preloading...'
+                              : preloadedExams[exam.examCode]
+                              ? '✓ Already Preloaded'
+                              : 'Preload Exam'}
                           </Button>
                           {canTakeExam(exam) ? (
                             <Button

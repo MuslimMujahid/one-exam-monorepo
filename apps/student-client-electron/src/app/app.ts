@@ -1,8 +1,16 @@
-import { BrowserWindow, shell, screen } from 'electron';
+import {
+  BrowserWindow,
+  shell,
+  screen,
+  Menu,
+  app as electronApp,
+} from 'electron';
 import { rendererAppName, rendererAppPort } from './constants';
 import { environment } from '../environments/environment';
 import { join } from 'path';
 import { format } from 'url';
+import { promises as fs } from 'fs';
+import { OFFLINE_EXAM_CONFIG } from './config/offline.config';
 
 export default class App {
   // Keep a global reference of the window object, if you don't, the window will
@@ -32,7 +40,7 @@ export default class App {
     App.mainWindow = null;
   }
 
-  private static onRedirect(event: any, url: string) {
+  private static onRedirect(event: Electron.Event, url: string) {
     if (url !== App.mainWindow.webContents.getURL()) {
       // this is a normal external redirect, open it in a new browser window
       event.preventDefault();
@@ -75,11 +83,117 @@ export default class App {
       },
     });
     App.mainWindow.setMenu(null);
+
+    // In development mode, create a simple menu with DevTools option
+    if (App.isDevelopmentMode()) {
+      const template = [
+        {
+          label: 'Development',
+          submenu: [
+            {
+              label: 'Toggle DevTools',
+              accelerator: 'F12',
+              click: () => {
+                App.mainWindow.webContents.toggleDevTools();
+              },
+            },
+            {
+              label: 'Reload',
+              accelerator: 'Ctrl+R',
+              click: () => {
+                App.mainWindow.webContents.reload();
+              },
+            },
+            { type: 'separator' as const },
+            {
+              label: 'Clear All Preloaded Exams',
+              click: async () => {
+                const { dialog } = await import('electron');
+                const result = await dialog.showMessageBox(App.mainWindow, {
+                  type: 'warning',
+                  buttons: ['Cancel', 'Clear All'],
+                  defaultId: 0,
+                  message: 'Clear all preloaded exam data?',
+                  detail:
+                    'This will delete all locally stored exam data. This action cannot be undone.',
+                });
+
+                if (result.response === 1) {
+                  try {
+                    // Clear exam data directly using the same logic as IPC handler
+                    const userDataPath = electronApp.getPath('userData');
+                    const examsDir = join(
+                      userDataPath,
+                      OFFLINE_EXAM_CONFIG.EXAMS_DIRECTORY
+                    );
+
+                    let clearedCount = 0;
+
+                    try {
+                      const files = await fs.readdir(examsDir);
+
+                      // Delete all .json files in the directory
+                      const deletePromises = files
+                        .filter((file) =>
+                          file.endsWith(OFFLINE_EXAM_CONFIG.EXAM_FILE_EXTENSION)
+                        )
+                        .map((file) => fs.unlink(join(examsDir, file)));
+
+                      await Promise.all(deletePromises);
+                      clearedCount = deletePromises.length;
+                    } catch (error) {
+                      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+                        throw error;
+                      }
+                      // Directory doesn't exist, nothing to clear
+                    }
+
+                    await dialog.showMessageBox(App.mainWindow, {
+                      type: 'info',
+                      message: 'Success',
+                      detail: `Cleared ${clearedCount} preloaded exam files.`,
+                    });
+                  } catch (error) {
+                    console.error('Failed to clear exam data:', error);
+                    await dialog.showMessageBox(App.mainWindow, {
+                      type: 'error',
+                      message: 'Error',
+                      detail: `Failed to clear exam data: ${
+                        error instanceof Error ? error.message : 'Unknown error'
+                      }`,
+                    });
+                  }
+                }
+              },
+            },
+          ],
+        },
+      ];
+      const menu = Menu.buildFromTemplate(template);
+      App.mainWindow.setMenu(menu);
+    }
+
     App.mainWindow.center();
 
     // if main window is ready to show, close the splash window and show the main window
     App.mainWindow.once('ready-to-show', () => {
       App.mainWindow.show();
+
+      // Auto-open DevTools in development mode
+      if (App.isDevelopmentMode()) {
+        App.mainWindow.webContents.openDevTools();
+      }
+    });
+
+    // Open DevTools with F12 or Ctrl+Shift+I (Cmd+Option+I on Mac)
+    App.mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (
+        input.key === 'F12' ||
+        (input.control && input.shift && input.key === 'I') ||
+        (input.meta && input.alt && input.key === 'I')
+      ) {
+        App.mainWindow.webContents.toggleDevTools();
+      }
     });
 
     // handle all external redirects in a new browser window

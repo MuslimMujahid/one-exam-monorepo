@@ -1,8 +1,13 @@
 import { AuthService } from './auth';
-import { Exam, JoinExamRequest, ExamStatus } from '../types/exam';
+import {
+  Exam,
+  JoinExamRequest,
+  ExamStatus,
+  PreloadExamResponse,
+} from '../types/exam';
 
 // Re-export types for convenience
-export type { Exam, JoinExamRequest, ExamStatus };
+export type { Exam, JoinExamRequest, ExamStatus, PreloadExamResponse };
 
 export class ExamService {
   /**
@@ -77,6 +82,89 @@ export class ExamService {
 
     // Consume the response
     await response.json();
+  }
+
+  /**
+   * Preload an exam for offline access
+   */
+  static async preloadExam(examCode: string): Promise<PreloadExamResponse> {
+    const response = await AuthService.authenticatedFetch(
+      '/exams/sessions/prefetch',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ examCode }),
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to preload exam';
+
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      } catch {
+        switch (response.status) {
+          case 400:
+            errorMessage = 'Invalid exam ID';
+            break;
+          case 401:
+            errorMessage = 'Authentication required';
+            break;
+          case 403:
+            errorMessage = 'Access denied';
+            break;
+          case 404:
+            errorMessage = 'Exam not found';
+            break;
+          case 500:
+            errorMessage = 'Server error occurred';
+            break;
+          default:
+            errorMessage = `Request failed with status ${response.status}`;
+        }
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    const preloadData: PreloadExamResponse = await response.json();
+
+    // Save to local storage if running in electron
+    if (window.electron && window.electron.saveExamData) {
+      try {
+        await window.electron.saveExamData(examCode, preloadData);
+      } catch (error) {
+        console.error('Failed to save exam data locally:', error);
+        throw new Error('Failed to save exam data for offline access');
+      }
+    }
+
+    return preloadData;
+  }
+
+  /**
+   * Check if an exam is already preloaded locally
+   */
+  static async isExamPreloaded(examCode: string): Promise<boolean> {
+    if (window.electron && window.electron.loadExamData) {
+      try {
+        const data = await window.electron.loadExamData(examCode);
+        return data !== null;
+      } catch (error) {
+        console.error('Failed to check preloaded exam:', error);
+        return false;
+      }
+    }
+    return false;
   }
 
   /**

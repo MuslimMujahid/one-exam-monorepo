@@ -46,3 +46,10 @@ export interface ExamData {
   timeLimit: number; // in minutes
   questions: Question[];
 }
+
+export interface PreloadExamResponse {
+  examCode: string;
+  encryptedExamData: string;
+  signedLicense: string;
+  prefetchedAt: string;
+}
