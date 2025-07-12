@@ -370,25 +370,27 @@ export function DashboardPage() {
                         </div>
 
                         <div className="mt-6 space-y-2">
-                          <Button
-                            onClick={() => handlePreloadExam(exam.examCode)}
-                            variant="outline"
-                            className={`w-full ${
-                              preloadedExams[exam.examCode]
-                                ? 'text-green-700 border-green-700 bg-green-50'
-                                : 'text-green-600 border-green-600 hover:bg-green-50'
-                            }`}
-                            disabled={
-                              preloadingExams.has(exam.examCode) ||
-                              preloadedExams[exam.examCode]
-                            }
-                          >
-                            {preloadingExams.has(exam.examCode)
-                              ? 'Preloading...'
-                              : preloadedExams[exam.examCode]
-                              ? '✓ Already Preloaded'
-                              : 'Preload Exam'}
-                          </Button>
+                          {canTakeExam(exam) && (
+                            <Button
+                              onClick={() => handlePreloadExam(exam.examCode)}
+                              variant="outline"
+                              className={`w-full ${
+                                preloadedExams[exam.examCode]
+                                  ? 'text-green-700 border-green-700 bg-green-50'
+                                  : 'text-green-600 border-green-600 hover:bg-green-50'
+                              }`}
+                              disabled={
+                                preloadingExams.has(exam.examCode) ||
+                                preloadedExams[exam.examCode]
+                              }
+                            >
+                              {preloadingExams.has(exam.examCode)
+                                ? 'Preloading...'
+                                : preloadedExams[exam.examCode]
+                                ? '✓ Already Preloaded'
+                                : 'Preload Exam'}
+                            </Button>
+                          )}
                           {canTakeExam(exam) ? (
                             <Button
                               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
