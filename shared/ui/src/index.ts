@@ -6,3 +6,6 @@ export * from './lib/select/select';
 export * from './lib/tabs/tabs';
 export * from './lib/textarea/textarea';
 export * from './lib/toaster/toaster';
+export * from './lib/alert-banner/alert-banner';
+export * from './lib/loading-spinner/loading-spinner';
+export * from './lib/dialog/dialog';
