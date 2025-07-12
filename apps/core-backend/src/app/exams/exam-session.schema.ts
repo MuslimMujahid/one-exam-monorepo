@@ -1,8 +1,21 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
+// Offline exam prefetch schema
+export const prefetchExamSchema = z.object({
+  examCode: z.string(),
+});
+
+// Request encryption key schema
+export const requestDecryptionKeySchema = z.object({
+  examCode: z.string(),
+  deviceId: z.string(),
+});
+
+// Start offline exam session schema
 export const startExamSessionSchema = z.object({
-  examId: z.string().uuid(),
+  examCode: z.string(),
+  decryptionKey: z.string(),
 });
 
 export const submitAnswerSchema = z.object({
@@ -18,6 +31,25 @@ export const endExamSessionSchema = z.object({
   sessionId: z.string().uuid(),
 });
 
+// Sync offline answers schema
+export const syncOfflineAnswersSchema = z.object({
+  sessionId: z.string().uuid(),
+  answers: z.array(
+    z.object({
+      questionId: z.string().uuid(),
+      answer: z.union([z.string(), z.array(z.string()), z.record(z.any())]),
+      submittedAt: z.string().datetime(),
+    })
+  ),
+});
+
+export class PrefetchExamDto extends createZodDto(prefetchExamSchema) {}
+export class RequestDecryptionKeyDto extends createZodDto(
+  requestDecryptionKeySchema
+) {}
 export class StartExamSessionDto extends createZodDto(startExamSessionSchema) {}
 export class SubmitAnswerDto extends createZodDto(submitAnswerSchema) {}
 export class EndExamSessionDto extends createZodDto(endExamSessionSchema) {}
+export class SyncOfflineAnswersDto extends createZodDto(
+  syncOfflineAnswersSchema
+) {}
