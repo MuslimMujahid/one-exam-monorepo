@@ -35,20 +35,24 @@ This implementation introduces a license-based security system for offline exams
 2. Client verifies license signature using embedded public RSA key
 3. Client validates license timing and user information
 4. Client decrypts exam content using exam encryption key from license
-5. Client calls `/exams/sessions/create/{examCode}` to register session start
+5. **Client starts exam locally without any server communication**
+6. **Session is created on server only when student submits first answer**
 
 ### 3. API Changes
 
 #### New Endpoints
 - `GET /exams/sessions/client-config` - Returns public key and license encryption key
-- `POST /exams/sessions/create/{examCode}` - Creates exam session after client validation
 
 #### Modified Endpoints
 - `POST /exams/sessions/prefetch` - Now returns encrypted content + signed license
+- `POST /exams/sessions/answer` - Now includes examCode and examStartTime, creates session if needed
+- `POST /exams/sessions/sync-answers` - Now includes examCode and examStartTime, creates session if needed
+- `POST /exams/sessions/end` - Now includes examCode and examStartTime, creates session if needed
 
 #### Removed Endpoints
 - `POST /exams/sessions/request-key` - No longer needed
-- `POST /exams/sessions/start` - Replaced by client-side validation
+- `POST /exams/sessions/start` - No longer needed (replaced by client-side validation)
+- `POST /exams/sessions/create/{examCode}` - No longer needed (session created on first answer)
 
 ### 4. Database Changes
 
@@ -58,11 +62,13 @@ ALTER TABLE "Exam" ADD COLUMN "encryptionKey" TEXT;
 
 ### 5. Security Benefits
 
-1. **Offline Independence**: No server communication required for exam start
+1. **Complete Offline Independence**: No server communication required for exam start
 2. **Tamper Protection**: Digital signatures prevent license modification
 3. **Time-bound Security**: Licenses include validity periods
 4. **User-specific**: Licenses are tied to specific users
 5. **Forward Security**: Each exam has unique encryption keys
+6. **Delayed Session Creation**: Sessions only created when answers are submitted, reducing server load
+7. **Accurate Timing**: Exam start time is captured from client when exam actually starts
 
 ### 6. Client Implementation Requirements
 
@@ -71,7 +77,9 @@ The client application must:
 2. Implement license signature verification
 3. Implement license and exam content decryption
 4. Validate license timing and user information
-5. Register session start with backend after successful validation
+5. **Start exam locally without server communication**
+6. **Include exam start time in all answer submissions**
+7. **Handle session creation transparently during answer submission**
 
 ## Usage Example
 
@@ -89,7 +97,7 @@ const { encryptedExamData, signedLicense } = await response.json();
 localStorage.setItem('exam_data', encryptedExamData);
 localStorage.setItem('exam_license', signedLicense);
 
-// 3. When starting exam (offline-capable)
+// 3. When starting exam (completely offline)
 const license = JSON.parse(localStorage.getItem('exam_license'));
 const { encryptedLicense, signature } = license;
 
@@ -108,13 +116,23 @@ if (isValid) {
       licenseData.examEncryptionKey
     );
 
-    // Register session start
-    await fetch(`/exams/sessions/create/${examCode}`, {
+    // Record exam start time locally
+    const examStartTime = new Date().toISOString();
+
+    // Start exam locally - NO SERVER COMMUNICATION NEEDED
+    startExamUI(examData);
+
+    // Later, when submitting answers (creates session automatically)
+    await fetch('/exams/sessions/answer', {
       method: 'POST',
+      body: JSON.stringify({
+        examCode: 'EXAM123',
+        questionId: 'question-id',
+        answer: 'student answer',
+        examStartTime: examStartTime
+      }),
       headers: { 'Authorization': 'Bearer <token>' }
     });
-
-    // Start exam...
   }
 }
 ```

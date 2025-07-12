@@ -10,21 +10,25 @@ export const prefetchExamSchema = z.object({
 // they are no longer needed with the new license-based approach
 
 export const submitAnswerSchema = z.object({
+  examCode: z.string(), // Add exam code to identify which exam
   questionId: z.string().uuid(),
   answer: z.union([
     z.string(), // Text answer
     z.array(z.string()), // Multiple choice answers
     z.record(z.any()), // Complex answer structures
   ]),
+  examStartTime: z.string().datetime(), // When the student started the exam locally
 });
 
 export const endExamSessionSchema = z.object({
-  sessionId: z.string().uuid(),
+  examCode: z.string(), // Change from sessionId to examCode since session may not exist yet
+  examStartTime: z.string().datetime(), // When the student started the exam locally
 });
 
 // Sync offline answers schema
 export const syncOfflineAnswersSchema = z.object({
-  sessionId: z.string().uuid(),
+  examCode: z.string(), // Change from sessionId to examCode since session may not exist yet
+  examStartTime: z.string().datetime(), // When the student started the exam locally
   answers: z.array(
     z.object({
       questionId: z.string().uuid(),

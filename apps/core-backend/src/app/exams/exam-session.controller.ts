@@ -1,8 +1,13 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Param, UseGuards } from '@nestjs/common';
 import { ExamSessionService } from './exam-session.service';
 import { User } from '../users/user.decorator';
 import { UserFromJwt } from '../auth/jwt.strategy';
-import { PrefetchExamDto } from './exam-session.schema';
+import {
+  PrefetchExamDto,
+  SubmitAnswerDto,
+  EndExamSessionDto,
+  SyncOfflineAnswersDto,
+} from './exam-session.schema';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -37,5 +42,49 @@ export class ExamSessionController {
   @Get('user-sessions')
   async getUserSessions(@User() user: UserFromJwt) {
     return this.examSessionService.getUserSessions(user);
+  }
+
+  /**
+   * Submit a single answer (for real-time sync when online)
+   * Creates session automatically if it doesn't exist
+   */
+  @Post('answer')
+  async submitAnswer(@Body() dto: SubmitAnswerDto, @User() user: UserFromJwt) {
+    return this.examSessionService.submitAnswer(user, dto);
+  }
+
+  /**
+   * Sync offline answers to the server
+   * Creates session automatically if it doesn't exist
+   */
+  @Post('sync-answers')
+  async syncOfflineAnswers(
+    @Body() dto: SyncOfflineAnswersDto,
+    @User() user: UserFromJwt
+  ) {
+    return this.examSessionService.syncOfflineAnswers(user, dto);
+  }
+
+  /**
+   * End exam session and calculate final score
+   * Creates session automatically if it doesn't exist
+   */
+  @Post('end')
+  async endExamSession(
+    @Body() dto: EndExamSessionDto,
+    @User() user: UserFromJwt
+  ) {
+    return this.examSessionService.endExamSession(user, dto);
+  }
+
+  /**
+   * Get active session details by exam code
+   */
+  @Get('active/:examCode')
+  async getActiveSession(
+    @Param('examCode') examCode: string,
+    @User() user: UserFromJwt
+  ) {
+    return this.examSessionService.getActiveSession(user, examCode);
   }
 }

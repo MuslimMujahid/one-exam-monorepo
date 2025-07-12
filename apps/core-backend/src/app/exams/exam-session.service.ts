@@ -146,12 +146,14 @@ export class ExamSessionService {
   }
 
   /**
-   * Create an exam session when client starts the exam
-   * This is called by the client after successful license verification and exam content decryption
+   * Create or get existing exam session
+   * This is called when student submits first answer or syncs answers
    */
-  async createExamSession(user: UserFromJwt, examCode: string) {
-    const now = new Date();
-
+  private async getOrCreateExamSession(
+    user: UserFromJwt,
+    examCode: string,
+    examStartTime: Date
+  ) {
     // Find the exam by code
     const exam = await this.prismaService.exam.findUnique({
       where: {
@@ -180,83 +182,74 @@ export class ExamSessionService {
       throw new ForbiddenException('You are not enrolled in this exam');
     }
 
-    // Check for existing sessions
-    const existingSession = await this.prismaService.examSession.findFirst({
+    // Check for existing session
+    let session = await this.prismaService.examSession.findFirst({
       where: {
         examId: exam.id,
         userId: user.userId,
       },
     });
 
-    if (existingSession) {
-      if (existingSession.status === 'COMPLETED') {
+    if (session) {
+      if (session.status === 'COMPLETED') {
         throw new BadRequestException('You have already completed this exam');
       }
-      if (
-        existingSession.status === 'IN_PROGRESS' &&
-        !existingSession.endTime
-      ) {
-        throw new BadRequestException(
-          'You already have an active session for this exam'
-        );
-      }
+      // Return existing session
+      return { session, exam };
     }
 
-    // Create new exam session
-    const session = await this.prismaService.examSession.create({
+    // Create new exam session with the provided start time
+    session = await this.prismaService.examSession.create({
       data: {
         examId: exam.id,
         userId: user.userId,
         status: 'IN_PROGRESS',
-        startTime: now,
+        startTime: examStartTime, // Use the time when student actually started the exam locally
       },
     });
 
     this.logger.log(
-      `Exam session created for user ${user.userId}, exam ${exam.id}, session ${session.id}`
+      `Exam session created for user ${user.userId}, exam ${exam.id}, session ${
+        session.id
+      }, started at ${examStartTime.toISOString()}`
     );
 
-    return {
-      sessionId: session.id,
-      examId: exam.id,
-      startTime: session.startTime,
-      message: 'Exam session created successfully',
-    };
+    return { session, exam };
   }
 
   /**
    * Sync offline answers to the server
    * Used when connectivity is restored or at exam completion
+   * Creates session if it doesn't exist
    */
   async syncOfflineAnswers(user: UserFromJwt, dto: SyncOfflineAnswersDto) {
-    // Verify session belongs to user and is active
-    const session = await this.prismaService.examSession.findFirst({
-      where: {
-        id: dto.sessionId,
-        userId: user.userId,
-        status: 'IN_PROGRESS',
-      },
-      include: {
-        exam: {
-          include: {
-            questions: true,
-          },
-        },
-      },
-    });
+    const examStartTime = new Date(dto.examStartTime);
 
-    if (!session) {
-      throw new NotFoundException('Active session not found');
-    }
+    // Get or create session using the exam start time from client
+    const { session, exam } = await this.getOrCreateExamSession(
+      user,
+      dto.examCode,
+      examStartTime
+    );
 
     const syncedAnswers: Array<{ questionId: string; submittedAt: Date }> = [];
     const errors: Array<{ questionId: string; error: string }> = [];
+
+    // Get exam questions for validation
+    const examWithQuestions = await this.prismaService.exam.findUnique({
+      where: { id: exam.id },
+      include: { questions: true },
+    });
+
+    if (!examWithQuestions) {
+      throw new NotFoundException('Exam questions not found');
+    }
 
     // Process each answer
     for (const answerData of dto.answers) {
       try {
         // Verify question belongs to the exam
-        const question = session.exam.questions.find(
+        const question = examWithQuestions.questions.find(
           (q) => q.id === answerData.questionId
         );
         if (!question) {
@@ -271,7 +264,7 @@ export class ExamSessionService {
         const answer = await this.prismaService.examAnswer.upsert({
           where: {
             sessionId_questionId: {
-              sessionId: dto.sessionId,
+              sessionId: session.id,
               questionId: answerData.questionId,
             },
           },
@@ -280,7 +273,7 @@ export class ExamSessionService {
             submittedAt: new Date(answerData.submittedAt),
           },
           create: {
-            sessionId: dto.sessionId,
+            sessionId: session.id,
             questionId: answerData.questionId,
             answer: answerData.answer,
             submittedAt: new Date(answerData.submittedAt),
@@ -300,11 +293,11 @@ export class ExamSessionService {
     }
 
     this.logger.log(
-      `Synced ${syncedAnswers.length} answers for session ${dto.sessionId}, ${errors.length} errors`
+      `Synced ${syncedAnswers.length} answers for session ${session.id}, ${errors.length} errors`
     );
 
     return {
-      sessionId: dto.sessionId,
+      sessionId: session.id,
       syncedAnswers: syncedAnswers.length,
       errors,
       totalAnswers: dto.answers.length,
@@ -342,6 +335,208 @@ export class ExamSessionService {
       status: session.status,
       score: session.score,
     }));
+  }
+
+  /**
+   * Submit a single answer (for real-time sync when online)
+   * Creates session if it doesn't exist using the provided exam start time
+   */
+  async submitAnswer(user: UserFromJwt, dto: SubmitAnswerDto) {
+    const examStartTime = new Date(dto.examStartTime);
+
+    // Get or create session using the exam start time from client
+    const { session, exam } = await this.getOrCreateExamSession(
+      user,
+      dto.examCode,
+      examStartTime
+    );
+
+    // Check if exam is still within time limits (if online)
+    const now = new Date();
+    if (now > exam.endDate) {
+      this.logger.warn(
+        `Answer submitted after exam end time for session ${session.id}`
+      );
+    }
+
+    // Verify question belongs to the exam
+    const question = await this.prismaService.question.findFirst({
+      where: {
+        id: dto.questionId,
+        examId: exam.id,
+      },
+    });
+
+    if (!question) {
+      throw new NotFoundException('Question not found in this exam');
+    }
+
+    // Upsert the answer
+    const answer = await this.prismaService.examAnswer.upsert({
+      where: {
+        sessionId_questionId: {
+          sessionId: session.id,
+          questionId: dto.questionId,
+        },
+      },
+      update: {
+        answer: dto.answer,
+        submittedAt: now,
+      },
+      create: {
+        sessionId: session.id,
+        questionId: dto.questionId,
+        answer: dto.answer,
+        submittedAt: now,
+      },
+    });
+
+    this.logger.log(
+      `Answer submitted for session ${session.id}, question ${dto.questionId}`
+    );
+
+    return {
+      success: true,
+      sessionId: session.id,
+      questionId: dto.questionId,
+      submittedAt: answer.submittedAt,
+    };
+  }
+
+  /**
+   * End exam session and calculate final score
+   * Creates session if it doesn't exist using the provided exam start time
+   */
+  async endExamSession(user: UserFromJwt, dto: EndExamSessionDto) {
+    const examStartTime = new Date(dto.examStartTime);
+
+    // Get or create session using the exam start time from client
+    const { session, exam } = await this.getOrCreateExamSession(
+      user,
+      dto.examCode,
+      examStartTime
+    );
+
+    if (session.status === 'COMPLETED') {
+      throw new BadRequestException('Exam session is already completed');
+    }
+
+    const now = new Date();
+
+    // Get exam questions and answers for scoring
+    const examWithQuestionsAndAnswers =
+      await this.prismaService.exam.findUnique({
+        where: { id: exam.id },
+        include: {
+          questions: true,
+          sessions: {
+            where: { id: session.id },
+            include: { answers: true },
+          },
+        },
+      });
+
+    if (
+      !examWithQuestionsAndAnswers ||
+      !examWithQuestionsAndAnswers.sessions[0]
+    ) {
+      throw new NotFoundException('Exam session not found for scoring');
+    }
+
+    const sessionWithAnswers = examWithQuestionsAndAnswers.sessions[0];
+
+    // Calculate score based on answers
+    let totalScore = 0;
+    let maxScore = 0;
+
+    for (const question of examWithQuestionsAndAnswers.questions) {
+      maxScore += question.points;
+
+      const answer = sessionWithAnswers.answers.find(
+        (a) => a.questionId === question.id
+      );
+      if (answer) {
+        const isCorrect = this.evaluateAnswer(question, answer.answer);
+        if (isCorrect) {
+          totalScore += question.points;
+        }
+      }
+    }
+
+    const finalScore = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+
+    // Update session with end time and score
+    const updatedSession = await this.prismaService.examSession.update({
+      where: { id: session.id },
+      data: {
+        endTime: now,
+        status: 'COMPLETED',
+        score: finalScore,
+      },
+    });
+
+    this.logger.log(
+      `Exam session ended for user ${user.userId}, session ${session.id}, score: ${finalScore}%`
+    );
+
+    return {
+      sessionId: updatedSession.id,
+      score: finalScore,
+      totalQuestions: examWithQuestionsAndAnswers.questions.length,
+      answeredQuestions: sessionWithAnswers.answers.length,
+      endTime: updatedSession.endTime,
+      maxScore,
+      earnedScore: totalScore,
+    };
+  }
+
+  /**
+   * Get active session details
+   */
+  async getActiveSession(user: UserFromJwt, examCode: string) {
+    const exam = await this.prismaService.exam.findUnique({
+      where: { examCode },
+    });
+
+    if (!exam) {
+      throw new NotFoundException('Exam not found');
+    }
+
+    const session = await this.prismaService.examSession.findFirst({
+      where: {
+        examId: exam.id,
+        userId: user.userId,
+        status: 'IN_PROGRESS',
+      },
+      include: {
+        exam: {
+          include: {
+            questions: {
+              select: {
+                id: true,
+                text: true,
+                questionType: true,
+                options: true,
+                points: true,
+              },
+            },
+          },
+        },
+        answers: true,
+      },
+    });
+
+    if (!session) {
+      throw new NotFoundException('No active session found for this exam');
+    }
+
+    return {
+      sessionId: session.id,
+      exam: session.exam,
+      startTime: session.startTime,
+      answers: session.answers,
+      timeRemaining: session.exam.endDate.getTime() - Date.now(),
+    };
   }
 
   // Private helper methods
