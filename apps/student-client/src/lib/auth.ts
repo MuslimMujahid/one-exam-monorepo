@@ -14,7 +14,7 @@ export class AuthService {
   static async login(
     credentials: LoginCredentials
   ): Promise<{ user: User; tokens: AuthTokens }> {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetch(this.getApiUrl('/auth/login'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ export class AuthService {
       throw new Error('No refresh token available');
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    const response = await fetch(this.getApiUrl('/auth/refresh'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -148,12 +148,27 @@ export class AuthService {
   }
 
   /**
-   * Make authenticated API request
+   * Construct full API URL from endpoint path
+   */
+  static getApiUrl(endpoint: string): string {
+    // Remove leading slash if present to avoid double slashes
+    const cleanEndpoint = endpoint.startsWith('/')
+      ? endpoint.slice(1)
+      : endpoint;
+    return `${API_BASE_URL}/${cleanEndpoint}`;
+  }
+
+  /**
+   * Make authenticated API request with endpoint path
    */
   static async authenticatedFetch(
-    url: string,
+    urlOrEndpoint: string,
     options: RequestInit = {}
   ): Promise<Response> {
+    // If it's a full URL (contains ://), use as-is, otherwise treat as endpoint
+    const url = urlOrEndpoint.includes('://')
+      ? urlOrEndpoint
+      : this.getApiUrl(urlOrEndpoint);
     const token = this.getAccessToken();
 
     if (!token) {
