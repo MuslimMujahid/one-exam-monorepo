@@ -47,9 +47,9 @@ export interface ExamData {
   questions: Question[];
 }
 
-export interface PreloadExamResponse {
+export interface DownloadExamResponse {
   examCode: string;
   encryptedExamData: string;
   signedLicense: string;
-  prefetchedAt: string;
+  downloadedAt: string;
 }

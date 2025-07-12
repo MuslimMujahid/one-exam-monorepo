@@ -4,8 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   useStudentExams,
   useJoinExam,
-  usePreloadExam,
-  usePreloadedExams,
+  useDownloadExam,
+  useDownloadedExams,
 } from '../hooks/useExams';
 import { useExamUtils } from '../hooks/useExamUtils';
 import { Button } from '@one-exam-monorepo/ui';
@@ -23,11 +23,11 @@ export function DashboardPage() {
   } = useStudentExams();
 
   const joinExamMutation = useJoinExam();
-  const preloadExamMutation = usePreloadExam();
+  const downloadExamMutation = useDownloadExam();
 
-  // Check which exams are already preloaded
-  const { data: preloadedExams = {}, refetch: refetchPreloadedStatus } =
-    usePreloadedExams(exams);
+  // Check which exams are already downloaded
+  const { data: downloadedExams = {}, refetch: refetchDownloadedStatus } =
+    useDownloadedExams(exams);
 
   const {
     getExamStatus,
@@ -43,11 +43,11 @@ export function DashboardPage() {
   const [joinError, setJoinError] = useState('');
   const [joinSuccess, setJoinSuccess] = useState('');
 
-  // Preload exam state
-  const [preloadingExams, setPreloadingExams] = useState<Set<string>>(
+  // Download exam state
+  const [downloadingExams, setDownloadingExams] = useState<Set<string>>(
     new Set()
   );
-  const [preloadSuccess, setPreloadSuccess] = useState<string>('');
+  const [downloadSuccess, setDownloadSuccess] = useState<string>('');
 
   // Convert query error to string for display
   const error = isError
@@ -98,22 +98,22 @@ export function DashboardPage() {
     }
   };
 
-  const handlePreloadExam = async (examCode: string) => {
+  const handleDownloadExam = async (examCode: string) => {
     try {
-      setPreloadingExams((prev) => new Set(prev).add(examCode));
+      setDownloadingExams((prev) => new Set(prev).add(examCode));
 
-      await preloadExamMutation.mutateAsync(examCode);
+      await downloadExamMutation.mutateAsync(examCode);
 
-      setPreloadSuccess(`Exam preloaded successfully for offline access!`);
-      setTimeout(() => setPreloadSuccess(''), 3000);
+      setDownloadSuccess(`Exam downloaded successfully for offline access!`);
+      setTimeout(() => setDownloadSuccess(''), 3000);
 
-      // Refresh preloaded status after successful preload
-      refetchPreloadedStatus();
+      // Refresh downloaded status after successful download
+      refetchDownloadedStatus();
     } catch (error) {
-      console.error('Failed to preload exam:', error);
+      console.error('Failed to download exam:', error);
       // Error handling is already done in the mutation's onError
     } finally {
-      setPreloadingExams((prev) => {
+      setDownloadingExams((prev) => {
         const newSet = new Set(prev);
         newSet.delete(examCode);
         return newSet;
@@ -163,9 +163,9 @@ export function DashboardPage() {
             </div>
           )}
 
-          {preloadSuccess && (
+          {downloadSuccess && (
             <div className="mb-6 rounded-md bg-green-50 p-4">
-              <div className="text-sm text-green-700">{preloadSuccess}</div>
+              <div className="text-sm text-green-700">{downloadSuccess}</div>
             </div>
           )}
 
@@ -272,17 +272,23 @@ export function DashboardPage() {
                     <div className="flex-shrink-0">
                       <div className="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
                         <span className="text-white text-sm font-semibold">
-                          {Object.values(preloadedExams).filter(Boolean).length}
+                          {
+                            Object.values(downloadedExams).filter(Boolean)
+                              .length
+                          }
                         </span>
                       </div>
                     </div>
                     <div className="ml-5 w-0 flex-1">
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">
-                          Preloaded
+                          Downloaded
                         </dt>
                         <dd className="text-lg font-medium text-gray-900">
-                          {Object.values(preloadedExams).filter(Boolean).length}{' '}
+                          {
+                            Object.values(downloadedExams).filter(Boolean)
+                              .length
+                          }{' '}
                           exams
                         </dd>
                       </dl>
@@ -358,12 +364,12 @@ export function DashboardPage() {
                           <div>
                             <span className="font-medium">Code:</span>{' '}
                             {exam.examCode}
-                            {preloadedExams[exam.examCode] && (
+                            {downloadedExams[exam.examCode] && (
                               <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 <span role="img" aria-label="Mobile device">
                                   📱
                                 </span>{' '}
-                                Preloaded
+                                Downloaded
                               </span>
                             )}
                           </div>
@@ -372,23 +378,23 @@ export function DashboardPage() {
                         <div className="mt-6 space-y-2">
                           {canTakeExam(exam) && (
                             <Button
-                              onClick={() => handlePreloadExam(exam.examCode)}
+                              onClick={() => handleDownloadExam(exam.examCode)}
                               variant="outline"
                               className={`w-full ${
-                                preloadedExams[exam.examCode]
+                                downloadedExams[exam.examCode]
                                   ? 'text-green-700 border-green-700 bg-green-50'
                                   : 'text-green-600 border-green-600 hover:bg-green-50'
                               }`}
                               disabled={
-                                preloadingExams.has(exam.examCode) ||
-                                preloadedExams[exam.examCode]
+                                downloadingExams.has(exam.examCode) ||
+                                downloadedExams[exam.examCode]
                               }
                             >
-                              {preloadingExams.has(exam.examCode)
-                                ? 'Preloading...'
-                                : preloadedExams[exam.examCode]
-                                ? '✓ Already Preloaded'
-                                : 'Preload Exam'}
+                              {downloadingExams.has(exam.examCode)
+                                ? 'Downloading...'
+                                : downloadedExams[exam.examCode]
+                                ? '✓ Already Downloaded'
+                                : 'Download'}
                             </Button>
                           )}
                           {canTakeExam(exam) ? (

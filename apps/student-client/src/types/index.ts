@@ -1,4 +1,4 @@
-import type { PreloadExamResponse } from './exam';
+import type { DownloadExamResponse } from './exam';
 
 // Re-export all types for convenience
 export * from './auth';
@@ -10,9 +10,9 @@ declare global {
     electron?: {
       saveExamData: (
         examCode: string,
-        data: PreloadExamResponse
+        data: DownloadExamResponse
       ) => Promise<void>;
-      loadExamData: (examCode: string) => Promise<PreloadExamResponse | null>;
+      loadExamData: (examCode: string) => Promise<DownloadExamResponse | null>;
       clearExamData: (examCode: string) => Promise<boolean>;
       clearAllExamData: () => Promise<number>;
       getAppVersion: () => Promise<string>;

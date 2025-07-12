@@ -3,11 +3,11 @@ import {
   Exam,
   JoinExamRequest,
   ExamStatus,
-  PreloadExamResponse,
+  DownloadExamResponse,
 } from '../types/exam';
 
 // Re-export types for convenience
-export type { Exam, JoinExamRequest, ExamStatus, PreloadExamResponse };
+export type { Exam, JoinExamRequest, ExamStatus, DownloadExamResponse };
 
 export class ExamService {
   /**
@@ -85,9 +85,9 @@ export class ExamService {
   }
 
   /**
-   * Preload an exam for offline access
+   * Download an exam for offline access
    */
-  static async preloadExam(examCode: string): Promise<PreloadExamResponse> {
+  static async downloadExam(examCode: string): Promise<DownloadExamResponse> {
     const response = await AuthService.authenticatedFetch(
       '/exams/sessions/prefetch',
       {
@@ -100,7 +100,7 @@ export class ExamService {
     );
 
     if (!response.ok) {
-      let errorMessage = 'Failed to preload exam';
+      let errorMessage = 'Failed to download exam';
 
       try {
         const errorData = await response.json();
@@ -136,31 +136,31 @@ export class ExamService {
       throw new Error(errorMessage);
     }
 
-    const preloadData: PreloadExamResponse = await response.json();
+    const downloadData: DownloadExamResponse = await response.json();
 
     // Save to local storage if running in electron
     if (window.electron && window.electron.saveExamData) {
       try {
-        await window.electron.saveExamData(examCode, preloadData);
+        await window.electron.saveExamData(examCode, downloadData);
       } catch (error) {
         console.error('Failed to save exam data locally:', error);
         throw new Error('Failed to save exam data for offline access');
       }
     }
 
-    return preloadData;
+    return downloadData;
   }
 
   /**
-   * Check if an exam is already preloaded locally
+   * Check if an exam is already downloaded locally
    */
-  static async isExamPreloaded(examCode: string): Promise<boolean> {
+  static async isExamDownloaded(examCode: string): Promise<boolean> {
     if (window.electron && window.electron.loadExamData) {
       try {
         const data = await window.electron.loadExamData(examCode);
         return data !== null;
       } catch (error) {
-        console.error('Failed to check preloaded exam:', error);
+        console.error('Failed to check downloaded exam:', error);
         return false;
       }
     }

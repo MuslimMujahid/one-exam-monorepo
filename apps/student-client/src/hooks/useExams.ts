@@ -51,7 +51,7 @@ export function useRefreshExams() {
 }
 
 /**
- * Hook to prefetch student exams (useful for preloading)
+ * Hook to prefetch student exams (useful for downloading)
  */
 export function usePrefetchStudentExams() {
   const queryClient = useQueryClient();
@@ -66,53 +66,53 @@ export function usePrefetchStudentExams() {
 }
 
 /**
- * Hook to preload an exam for offline access
+ * Hook to download an exam for offline access
  */
-export function usePreloadExam() {
+export function useDownloadExam() {
   return useMutation({
-    mutationFn: (examCode: string) => ExamService.preloadExam(examCode),
+    mutationFn: (examCode: string) => ExamService.downloadExam(examCode),
     onError: (error) => {
-      console.error('Failed to preload exam:', error);
+      console.error('Failed to download exam:', error);
     },
   });
 }
 
 /**
- * Hook to check which exams are preloaded
+ * Hook to check which exams are downloaded
  */
-export function usePreloadedExams(exams: Exam[]) {
+export function useDownloadedExams(exams: Exam[]) {
   return useQuery({
-    queryKey: ['preloadedExams', exams.map((e) => e.examCode)],
+    queryKey: ['downloadedExams', exams.map((e) => e.examCode)],
     queryFn: async () => {
-      const preloadedStatus: Record<string, boolean> = {};
+      const downloadedStatus: Record<string, boolean> = {};
 
       for (const exam of exams) {
         try {
-          preloadedStatus[exam.examCode] = await ExamService.isExamPreloaded(
+          downloadedStatus[exam.examCode] = await ExamService.isExamDownloaded(
             exam.examCode
           );
         } catch (error) {
           console.error(
-            `Failed to check preload status for exam ${exam.examCode}:`,
+            `Failed to check download status for exam ${exam.examCode}:`,
             error
           );
-          preloadedStatus[exam.examCode] = false;
+          downloadedStatus[exam.examCode] = false;
         }
       }
 
-      return preloadedStatus;
+      return downloadedStatus;
     },
     enabled:
       exams.length > 0 && typeof window !== 'undefined' && !!window.electron,
-    staleTime: 30 * 1000, // 30 seconds - preload status doesn't change frequently
+    staleTime: 30 * 1000, // 30 seconds - download status doesn't change frequently
     gcTime: 60 * 1000, // 1 minute
   });
 }
 
 /**
- * Hook to clear a specific preloaded exam
+ * Hook to clear a specific downloaded exam
  */
-export function useClearPreloadedExam() {
+export function useClearDownloadedExam() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -123,20 +123,20 @@ export function useClearPreloadedExam() {
       throw new Error('Electron API not available');
     },
     onSuccess: (_, examCode) => {
-      console.log(`Cleared preloaded data for exam: ${examCode}`);
-      // Invalidate preloaded exams query to refresh UI
-      queryClient.invalidateQueries({ queryKey: ['preloadedExams'] });
+      console.log(`Cleared downloaded data for exam: ${examCode}`);
+      // Invalidate downloaded exams query to refresh UI
+      queryClient.invalidateQueries({ queryKey: ['downloadedExams'] });
     },
     onError: (error) => {
-      console.error('Failed to clear preloaded exam:', error);
+      console.error('Failed to clear downloaded exam:', error);
     },
   });
 }
 
 /**
- * Hook to clear all preloaded exams
+ * Hook to clear all downloaded exams
  */
-export function useClearAllPreloadedExams() {
+export function useClearAllDownloadedExams() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -147,12 +147,12 @@ export function useClearAllPreloadedExams() {
       throw new Error('Electron API not available');
     },
     onSuccess: () => {
-      console.log('Cleared all preloaded exam data');
-      // Invalidate preloaded exams query to refresh UI
-      queryClient.invalidateQueries({ queryKey: ['preloadedExams'] });
+      console.log('Cleared all downloaded exam data');
+      // Invalidate downloaded exams query to refresh UI
+      queryClient.invalidateQueries({ queryKey: ['downloadedExams'] });
     },
     onError: (error) => {
-      console.error('Failed to clear all preloaded exams:', error);
+      console.error('Failed to clear all downloaded exams:', error);
     },
   });
 }
