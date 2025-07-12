@@ -77,16 +77,12 @@ export class ExamSessionService {
       throw new ForbiddenException('You are not enrolled in this exam');
     }
 
-    // Generate or retrieve exam encryption key
-    let examEncryptionKey = exam.encryptionKey;
+    // Get exam encryption key (should already exist since it's generated during exam creation)
+    const examEncryptionKey = exam.encryptionKey;
     if (!examEncryptionKey) {
-      examEncryptionKey = this.cryptoService.generateExamEncryptionKey();
-
-      // Store the encryption key in the database
-      await this.prismaService.exam.update({
-        where: { id: exam.id },
-        data: { encryptionKey: examEncryptionKey },
-      });
+      throw new BadRequestException(
+        'Exam encryption key not found. Please contact administrator.'
+      );
     }
 
     // Prepare exam data for offline storage

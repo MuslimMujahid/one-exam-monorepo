@@ -139,13 +139,10 @@ export class CryptoService implements OnModuleInit {
     const encryptedLicense = this.encryptLicenseFile(licenseContent);
     const signature = this.signLicenseFile(encryptedLicense);
 
-    // Combine encrypted license and signature
-    const signedLicense = {
-      encryptedLicense,
-      signature,
-    };
+    // Combine encrypted license and signature separated by newline
+    const signedLicense = `${encryptedLicense}\n${signature}`;
 
-    return JSON.stringify(signedLicense);
+    return Buffer.from(signedLicense, 'utf8').toString('base64');
   }
 
   /**

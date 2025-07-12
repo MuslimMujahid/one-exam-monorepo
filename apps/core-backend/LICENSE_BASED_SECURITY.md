@@ -14,21 +14,22 @@ This implementation introduces a license-based security system for offline exams
 ### 2. Security Flow
 
 #### Setup Phase (Backend)
-1. Generate unique exam encryption key for each exam
-2. Generate RSA key pair (stored securely on server)
-3. Generate license encryption key (embedded in client app)
+1. **During exam creation**: Generate unique exam encryption key for each exam and store in database
+2. **At application startup**: Generate RSA key pair (stored securely on server)
+3. **At application startup**: Generate license encryption key (embedded in client app)
 
 #### Prefetch Phase
 1. User requests exam prefetch via `/exams/sessions/prefetch`
 2. Backend validates user enrollment and exam availability
-3. Backend encrypts exam content with exam encryption key
-4. Backend creates license file containing:
+3. **Backend uses existing exam encryption key (generated during exam creation)**
+4. Backend encrypts exam content with exam encryption key
+5. Backend creates license file containing:
    - Exam ID and metadata
    - Exam encryption key
    - User ID and validity information
-5. Backend encrypts license file with license encryption key
-6. Backend signs encrypted license with private RSA key
-7. Backend returns encrypted exam content + signed license
+6. Backend encrypts license file with license encryption key
+7. Backend signs encrypted license with private RSA key
+8. Backend returns encrypted exam content + signed license
 
 #### Exam Start Phase (Client-side)
 1. Client decrypts license file using embedded license encryption key
@@ -56,9 +57,13 @@ This implementation introduces a license-based security system for offline exams
 
 ### 4. Database Changes
 
+The `Exam` table has been updated to include an encryption key field:
+
 ```sql
 ALTER TABLE "Exam" ADD COLUMN "encryptionKey" TEXT;
 ```
+
+**Important**: This field is automatically populated when new exams are created. For existing exams created before this update, you may need to run a migration script to generate and populate encryption keys.
 
 ### 5. Security Benefits
 

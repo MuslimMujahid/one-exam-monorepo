@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CryptoService } from '../crypto/crypto.service';
 import { CreateExamDto } from './create-exam.schema';
 import {
   CreateExamFromCsvDto,
@@ -19,7 +20,10 @@ interface ProcessedQuestion {
 
 @Injectable()
 export class TeacherExamsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cryptoService: CryptoService
+  ) {}
 
   async getAllExams(user: UserFromJwt) {
     const exams = await this.prisma.exam.findMany({
@@ -51,9 +55,13 @@ export class TeacherExamsService {
   async createExam(dto: CreateExamDto, userId: string) {
     const { questions, ...others } = dto;
 
+    // Generate encryption key for the exam
+    const encryptionKey = this.cryptoService.generateExamEncryptionKey();
+
     return this.prisma.exam.create({
       data: {
         userId,
+        encryptionKey, // Add the encryption key
         ...others,
         questions: {
           createMany: {
@@ -74,6 +82,7 @@ export class TeacherExamsService {
       examCode: dto.examCode,
       passKey: dto.passKey,
       status: dto.status,
+      encryptionKey: this.cryptoService.generateExamEncryptionKey(), // Generate encryption key for each exam
     }));
 
     const questionsData = dtos.map((dto) => dto.questions);
@@ -111,10 +120,14 @@ export class TeacherExamsService {
       // Parse CSV data
       const questions = await this.parseCsvToQuestions(csvBuffer);
 
+      // Generate encryption key for the exam
+      const encryptionKey = this.cryptoService.generateExamEncryptionKey();
+
       // Create exam with questions
       return this.prisma.exam.create({
         data: {
           userId,
+          encryptionKey, // Add the encryption key
           ...examDto,
           questions: {
             createMany: {
