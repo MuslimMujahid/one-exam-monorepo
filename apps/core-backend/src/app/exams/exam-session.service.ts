@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  Options,
 } from '@nestjs/common';
 import { UserFromJwt } from '../auth/jwt.strategy';
 import { PrismaService } from '../prisma/prisma.service';
@@ -86,6 +87,21 @@ export class ExamSessionService {
     }
 
     // Prepare exam data for offline storage
+    const questions = exam.questions.map((question) => {
+      // Convert options to a simple array of strings
+      const optionsArray = question.options
+        ? (question.options as Array<{ value: string; isCorrect: boolean }>)
+        : null;
+      const options = optionsArray?.map((option) => option.value) ?? null;
+
+      return {
+        id: question.id,
+        text: question.text,
+        questionType: question.questionType,
+        options,
+        points: question.points,
+      };
+    });
     const examData = {
       id: exam.id,
       title: exam.title,
@@ -93,7 +109,7 @@ export class ExamSessionService {
       startDate: exam.startDate,
       endDate: exam.endDate,
       examCode: exam.examCode,
-      questions: exam.questions,
+      questions: questions,
       teacherName: exam.user.name,
     };
 

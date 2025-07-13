@@ -46,8 +46,6 @@ export function ExamPage() {
         setIsElectronAvailable(true);
 
         try {
-          console.log(`Loading exam data for: ${examId}`);
-
           // The examId parameter now contains the examCode (passed from dashboard)
           // Try to decrypt using the examId as examCode
           const decryptedData: DecryptedExamData =
@@ -55,8 +53,6 @@ export function ExamPage() {
               examId, // examId now contains examCode
               user?.id // Pass user ID for validation
             );
-
-          console.log('Successfully decrypted exam data:', decryptedData.title);
 
           // Convert DecryptedExamData to ExamData format expected by the UI
           const examData: ExamData = {

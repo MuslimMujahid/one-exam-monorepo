@@ -31,14 +31,12 @@ export function QuestionDisplay({
           </span>
         </div>
 
-        <p className="text-gray-700 text-lg leading-relaxed">
-          {question.question}
-        </p>
+        <p className="text-gray-700 text-lg leading-relaxed">{question.text}</p>
       </div>
 
       {/* Answer Interface */}
       <div className="mb-8">
-        {question.type === 'multiple-choice-single' && (
+        {question.questionType === 'multiple-choice-single' && (
           <div className="space-y-3">
             {question.options?.map((option, index) => (
               <label
@@ -61,7 +59,7 @@ export function QuestionDisplay({
           </div>
         )}
 
-        {question.type === 'multiple-choice-multiple' && (
+        {question.questionType === 'multiple-choice-multiple' && (
           <div className="space-y-3">
             {question.options?.map((option, index) => {
               const selectedAnswers = Array.isArray(answer?.answer)
@@ -98,7 +96,7 @@ export function QuestionDisplay({
           </div>
         )}
 
-        {question.type === 'text' && (
+        {question.questionType === 'text' && (
           <Textarea
             placeholder="Write your answer here..."
             value={(answer?.answer as string) || ''}

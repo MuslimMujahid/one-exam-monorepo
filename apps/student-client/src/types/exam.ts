@@ -26,8 +26,8 @@ export interface ExamStatus {
 // Exam taking interfaces
 export interface Question {
   id: number;
-  type: 'text' | 'multiple-choice-single' | 'multiple-choice-multiple';
-  question: string;
+  questionType: 'text' | 'multiple-choice-single' | 'multiple-choice-multiple';
+  text: string;
   options?: string[];
   correctAnswer?: string | number | number[];
   points: number;
