@@ -449,10 +449,10 @@ export class ElectronCrypto {
 
   /**
    * Generate a symmetric key for exam submission encryption
-   * @returns Base64 encoded 32-byte AES key
+   * @returns Raw 32-byte AES key as Buffer
    */
-  static generateSubmissionKey(): string {
-    return crypto.randomBytes(32).toString('base64');
+  static generateSubmissionKey(): Buffer {
+    return crypto.randomBytes(32);
   }
 
   /**
@@ -569,18 +569,21 @@ export class ElectronCrypto {
   /**
    * Encrypt sealed answers package with submission key
    * @param sealedAnswers - The sealed answers package
-   * @param submissionKey - Base64 encoded submission key
+   * @param submissionKey - Raw submission key buffer
    * @returns Encrypted sealed answers (iv:encrypted:authTag format)
    */
   static encryptSealedAnswers(
     sealedAnswers: ExamSubmissionData,
-    submissionKey: string
+    submissionKey: Buffer
   ): string {
     try {
-      const key = Buffer.from(submissionKey, 'base64');
       const iv = crypto.randomBytes(12); // 12 bytes for GCM
 
-      const cipher = crypto.createCipheriv(this.AES_ALGORITHM, key, iv);
+      const cipher = crypto.createCipheriv(
+        this.AES_ALGORITHM,
+        submissionKey,
+        iv
+      );
 
       const plaintext = JSON.stringify(sealedAnswers);
       let encrypted = cipher.update(plaintext, 'utf8', 'hex');
@@ -598,13 +601,12 @@ export class ElectronCrypto {
 
   /**
    * Encrypt submission key with RSA public key
-   * @param submissionKey - Base64 encoded submission key
+   * @param submissionKey - Raw submission key buffer
    * @returns Base64 encoded encrypted submission key
    */
-  static encryptSubmissionKey(submissionKey: string): string {
+  static encryptSubmissionKey(submissionKey: Buffer): string {
     try {
       const publicKey = this.getPublicKey();
-      const buffer = Buffer.from(submissionKey, 'base64');
 
       const encrypted = crypto.publicEncrypt(
         {
@@ -612,7 +614,7 @@ export class ElectronCrypto {
           padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
           oaepHash: 'sha256',
         },
-        buffer
+        submissionKey
       );
 
       return encrypted.toString('base64');
@@ -682,7 +684,7 @@ export class ElectronCrypto {
       };
     } catch (error) {
       console.error('Failed to create encrypted submission:', error);
-      throw new Error('Failed to create encrypted submission');
+      throw new Error('Failed to create encrypted submissusion');
     }
   }
 

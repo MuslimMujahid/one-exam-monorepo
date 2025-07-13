@@ -81,6 +81,9 @@ export class OfflineSubmissionService {
   constructor(private readonly prismaService: PrismaService) {
     // Load RSA private key from environment or file
     this.RSA_PRIVATE_KEY = this.loadPrivateKey();
+
+    // Verify that the key pair works
+    this.verifyKeyPair();
   }
 
   /**
@@ -111,11 +114,24 @@ export class OfflineSubmissionService {
         path.resolve(__dirname, '..', '..', 'keys', 'private.pem'),
       ];
 
+      // Debug: Log the environment info
+      this.logger.debug('RSA Key Loading Debug Info:');
+      this.logger.debug(`__dirname: ${__dirname}`);
+      this.logger.debug(`process.cwd(): ${process.cwd()}`);
+      this.logger.debug(
+        `Possible paths: ${JSON.stringify(possiblePaths, null, 2)}`
+      );
+
       for (const keyPath of possiblePaths) {
         try {
+          this.logger.debug(`Checking path: ${keyPath}`);
           if (fs.existsSync(keyPath)) {
             const privateKey = fs.readFileSync(keyPath, 'utf8');
             this.logger.log(`Successfully loaded private key from: ${keyPath}`);
+            this.logger.debug(
+              `Key starts with: ${privateKey.substring(0, 50)}`
+            );
+            this.logger.debug(`Key length: ${privateKey.length}`);
             return privateKey;
           }
         } catch (pathError) {
@@ -137,19 +153,26 @@ export class OfflineSubmissionService {
   /**
    * Decrypt submission key using RSA private key
    */
-  private decryptSubmissionKey(encryptedKey: string): string {
+  private decryptSubmissionKey(encryptedKey: string): Buffer {
     try {
+      this.logger.debug(
+        `Attempting to decrypt submission key. ${encryptedKey}`
+      );
+      this.logger.debug(`Private key: ${this.RSA_PRIVATE_KEY}`);
+
       const buffer = Buffer.from(encryptedKey, 'base64');
       const decrypted = crypto.privateDecrypt(
         {
           key: this.RSA_PRIVATE_KEY,
           padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+          oaepHash: 'sha256',
         },
         buffer
       );
-      return decrypted.toString('base64');
-    } catch {
-      throw new Error('Failed to decrypt submission key');
+
+      return decrypted;
+    } catch (error) {
+      throw new Error(`Failed to decrypt submission key: ${error.message}`);
     }
   }
 
@@ -158,22 +181,29 @@ export class OfflineSubmissionService {
    */
   private decryptSealedAnswers(
     encryptedData: string,
-    submissionKey: string
+    submissionKey: Buffer
   ): DecryptedSubmission {
     try {
-      const [ivBase64, encryptedBase64, authTagBase64] =
-        encryptedData.split(':');
+      const [ivHex, encryptedHex, authTagHex] = encryptedData.split(':');
 
-      if (!ivBase64 || !encryptedBase64 || !authTagBase64) {
+      if (!ivHex || !encryptedHex || !authTagHex) {
         throw new Error('Invalid encrypted data format');
       }
 
-      const iv = Buffer.from(ivBase64, 'base64');
-      const encrypted = Buffer.from(encryptedBase64, 'base64');
-      const authTag = Buffer.from(authTagBase64, 'base64');
-      const key = Buffer.from(submissionKey, 'base64');
+      // Client uses hex format, not base64
+      const iv = Buffer.from(ivHex, 'hex');
+      const encrypted = Buffer.from(encryptedHex, 'hex');
+      const authTag = Buffer.from(authTagHex, 'hex');
 
-      const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+      this.logger.debug(
+        `Decrypting sealed answers - IV length: ${iv.length}, encrypted length: ${encrypted.length}, authTag length: ${authTag.length}, key length: ${submissionKey.length}`
+      );
+
+      const decipher = crypto.createDecipheriv(
+        'aes-256-gcm',
+        submissionKey,
+        iv
+      );
       decipher.setAuthTag(authTag);
 
       const decryptedChunks: Buffer[] = [];
@@ -182,8 +212,9 @@ export class OfflineSubmissionService {
 
       const decryptedData = Buffer.concat(decryptedChunks).toString('utf8');
       return JSON.parse(decryptedData);
-    } catch {
-      throw new Error('Failed to decrypt sealed answers');
+    } catch (error) {
+      this.logger.error('Failed to decrypt sealed answers:', error.message);
+      throw new Error(`Failed to decrypt sealed answers: ${error.message}`);
     }
   }
 
@@ -556,11 +587,38 @@ export class OfflineSubmissionService {
       // Decrypt all submissions
       const decryptedSubmissions: DecryptedSubmission[] = [];
 
+      this.logger.log(`About to process ${rawSubmissions.length} submissions`);
+
       for (const submission of rawSubmissions) {
         try {
+          this.logger.debug(`Processing submission ${submission.submissionId}`);
+          this.logger.debug(
+            `Encrypted key length: ${
+              submission.encryptedSubmissionKey?.length || 'undefined'
+            }`
+          );
+          this.logger.debug(
+            `Encrypted data length: ${
+              submission.encryptedSealedAnswers?.length || 'undefined'
+            }`
+          );
+
+          // Log first few characters of encrypted key for debugging
+          this.logger.debug(
+            `Encrypted key starts with: ${submission.encryptedSubmissionKey?.substring(
+              0,
+              20
+            )}...`
+          );
+
           const submissionKey = this.decryptSubmissionKey(
             submission.encryptedSubmissionKey
           );
+
+          this.logger.debug(
+            `Successfully decrypted submission key for ${submission.submissionId}`
+          );
+
           const decryptedData = this.decryptSealedAnswers(
             submission.encryptedSealedAnswers,
             submissionKey
@@ -572,11 +630,23 @@ export class OfflineSubmissionService {
           decryptedData.savedAt = submission.savedAt;
 
           decryptedSubmissions.push(decryptedData);
+          this.logger.debug(
+            `Successfully processed submission ${submission.submissionId}`
+          );
         } catch (error) {
           this.logger.error(
             `Failed to decrypt submission ${submission.submissionId}:`,
             error
           );
+
+          // Log additional debugging info for failed submissions
+          this.logger.debug('Failed submission details:', {
+            submissionId: submission.submissionId,
+            encryptedKeyLength: submission.encryptedSubmissionKey?.length,
+            encryptedDataLength: submission.encryptedSealedAnswers?.length,
+            savedAt: submission.savedAt,
+          });
+
           // Continue with other submissions
         }
       }
@@ -794,6 +864,131 @@ export class OfflineSubmissionService {
     } catch (error) {
       this.logger.error('Failed to get submission analysis:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Verify that the private key can decrypt data encrypted with the corresponding public key
+   */
+  private verifyKeyPair(): boolean {
+    try {
+      // Load the public key
+      const publicKeyPath = path.resolve(
+        __dirname,
+        '..',
+        '..',
+        'keys',
+        'public.pem'
+      );
+      if (!fs.existsSync(publicKeyPath)) {
+        this.logger.warn('Public key not found for verification');
+        return false;
+      }
+
+      const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
+
+      // Test data
+      const testData = 'test-encryption-data';
+
+      // Encrypt with public key using the same settings as the client
+      const encrypted = crypto.publicEncrypt(
+        {
+          key: publicKey,
+          padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+          oaepHash: 'sha256',
+        },
+        Buffer.from(testData, 'utf8')
+      );
+
+      // Try to decrypt with private key
+      const decrypted = crypto.privateDecrypt(
+        {
+          key: this.RSA_PRIVATE_KEY,
+          padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+          oaepHash: 'sha256',
+        },
+        encrypted
+      );
+
+      const result = decrypted.toString('utf8') === testData;
+      this.logger.log(
+        `RSA key pair verification: ${result ? 'SUCCESS' : 'FAILED'}`
+      );
+      return result;
+    } catch (error) {
+      this.logger.error('RSA key pair verification failed:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Log public key information for debugging
+   */
+  private logPublicKeyInfo(): void {
+    try {
+      const publicKeyPath = path.resolve(
+        __dirname,
+        '..',
+        '..',
+        'keys',
+        'public.pem'
+      );
+      if (fs.existsSync(publicKeyPath)) {
+        const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
+        this.logger.debug(
+          'Backend public key (first 100 chars):',
+          publicKey.substring(0, 100)
+        );
+
+        // Check if client has the same public key - fix the path
+        const clientPublicKeyPath = path.resolve(
+          __dirname,
+          '..',
+          '..',
+          '..',
+          '..',
+          'apps',
+          'student-client-electron',
+          'src',
+          'keys',
+          'public.pem'
+        );
+        if (fs.existsSync(clientPublicKeyPath)) {
+          const clientPublicKey = fs.readFileSync(clientPublicKeyPath, 'utf8');
+          this.logger.debug(
+            'Client public key (first 100 chars):',
+            clientPublicKey.substring(0, 100)
+          );
+
+          const keysMatch = publicKey.trim() === clientPublicKey.trim();
+          this.logger.warn(`Public keys match: ${keysMatch}`);
+
+          if (!keysMatch) {
+            this.logger.error(
+              '❌ PUBLIC KEY MISMATCH DETECTED! Client and backend are using different public keys.'
+            );
+            this.logger.error(
+              'This explains why decryption is failing. The client encrypted with a different public key.'
+            );
+            this.logger.error(
+              'Solution: Run "node generate-keys.js" to regenerate matching keys for both client and backend.'
+            );
+          } else {
+            this.logger.log(
+              '✅ Public keys match, issue must be in encryption/decryption algorithm'
+            );
+          }
+        } else {
+          this.logger.warn(
+            'Client public key not found at:',
+            clientPublicKeyPath
+          );
+        }
+      } else {
+        this.logger.warn('Backend public key not found at:', publicKeyPath);
+      }
+    } catch (error) {
+      this.logger.error('Failed to check public key info:', error.message);
     }
   }
 }
