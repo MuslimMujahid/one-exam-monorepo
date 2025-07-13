@@ -16,6 +16,44 @@ export interface DecryptedExamData {
   teacherName: string;
 }
 
+// Submission-related interfaces
+export interface EncryptedSubmissionPackage {
+  encryptedSealedAnswers: string;
+  encryptedSubmissionKey: string;
+  submissionId: string;
+}
+
+export interface StoredSubmission extends EncryptedSubmissionPackage {
+  savedAt: string;
+}
+
+// Session management interfaces
+export interface ExamSession {
+  sessionId: string;
+  examId: string;
+  studentId: string;
+  examStartedAt: string;
+  lastActivity: string;
+  currentQuestionIndex: number;
+  timeRemaining: number; // in seconds
+  answers: Record<
+    number,
+    {
+      questionId: number;
+      answer: string | number | number[];
+      timeSpent: number;
+    }
+  >;
+  examStarted: boolean;
+  examSubmitted: boolean;
+  autoSaveEnabled: boolean;
+}
+
+export interface SessionSaveData extends ExamSession {
+  savedAt: string;
+  version: string;
+}
+
 // Electron window interface
 declare global {
   interface Window {
@@ -38,6 +76,48 @@ declare global {
         publicKey: string;
         licenseEncryptionKey: string;
       }>;
+      // New submission methods
+      saveSubmissionLocally: (
+        examId: string,
+        studentId: string,
+        answers: Record<
+          number,
+          {
+            questionId: number;
+            answer: string | number | number[];
+            timeSpent: number;
+          }
+        >,
+        sessionId?: string
+      ) => Promise<{
+        submissionId: string;
+        savedAt: string;
+        sessionId: string | null;
+      }>;
+      getStoredSubmissions: () => Promise<StoredSubmission[]>;
+      clearStoredSubmission: (
+        submissionId: string,
+        sessionId?: string
+      ) => Promise<boolean>;
+      // Test utilities
+      testSubmissionEncryption: () => Promise<{
+        success: boolean;
+        message: string;
+      }>;
+      // Session management
+      createExamSession: (
+        examId: string,
+        studentId: string
+      ) => Promise<ExamSession>;
+      saveExamSession: (sessionData: ExamSession) => Promise<boolean>;
+      loadExamSession: (sessionId: string) => Promise<SessionSaveData | null>;
+      getStudentSessions: (studentId: string) => Promise<SessionSaveData[]>;
+      updateExamSession: (
+        sessionId: string,
+        updates: Partial<ExamSession>
+      ) => Promise<ExamSession>;
+      clearExamSession: (sessionId: string) => Promise<boolean>;
+      cleanupExpiredSessions: () => Promise<number>;
     };
   }
 }

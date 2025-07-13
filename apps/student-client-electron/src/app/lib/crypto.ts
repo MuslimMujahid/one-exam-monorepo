@@ -36,6 +36,55 @@ export interface DownloadExamResponse {
   prefetchedAt: string;
 }
 
+// Submission-related interfaces
+export interface ExamSubmissionData {
+  examId: string;
+  studentId: string;
+  answers: Record<
+    number,
+    {
+      questionId: number;
+      answer: string | number | number[];
+      timeSpent: number;
+    }
+  >;
+  finalAnswersHash: string;
+  sealingTimestamp: string;
+}
+
+// Exam session interfaces
+export interface ExamSession {
+  sessionId: string;
+  examId: string;
+  studentId: string;
+  examStartedAt: string;
+  lastActivity: string;
+  currentQuestionIndex: number;
+  timeRemaining: number; // in seconds
+  answers: Record<
+    number,
+    {
+      questionId: number;
+      answer: string | number | number[];
+      timeSpent: number;
+    }
+  >;
+  examStarted: boolean;
+  examSubmitted: boolean;
+  autoSaveEnabled: boolean;
+}
+
+export interface SessionSaveData extends ExamSession {
+  savedAt: string;
+  version: string; // For future compatibility
+}
+
+export interface EncryptedSubmissionPackage {
+  encryptedSealedAnswers: string; // Base64 encoded encrypted sealed answers
+  encryptedSubmissionKey: string; // Base64 encoded RSA-encrypted submission key
+  submissionId: string; // Unique identifier for this submission
+}
+
 /**
  * Electron-side crypto utilities for license and exam data decryption
  * These functions use Node.js crypto module for server-grade encryption
@@ -388,5 +437,396 @@ export class ElectronCrypto {
       publicKey: this.getPublicKey(),
       licenseEncryptionKey: this.getLicenseEncryptionKey(),
     };
+  }
+
+  /**
+   * Generate a unique submission ID
+   * @returns A unique submission identifier
+   */
+  static generateSubmissionId(): string {
+    return crypto.randomBytes(16).toString('hex');
+  }
+
+  /**
+   * Generate a symmetric key for exam submission encryption
+   * @returns Base64 encoded 32-byte AES key
+   */
+  static generateSubmissionKey(): string {
+    return crypto.randomBytes(32).toString('base64');
+  }
+
+  /**
+   * Canonicalize answer data for consistent hashing
+   * @param answers - The answers object to canonicalize
+   * @returns Canonicalized string representation
+   */
+  static canonicalizeAnswers(
+    answers: Record<
+      number,
+      {
+        questionId: number;
+        answer: string | number | number[];
+        timeSpent: number;
+      }
+    >
+  ): string {
+    // Sort by question ID to ensure consistent ordering
+    const sortedQuestionIds = Object.keys(answers)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    const canonicalAnswers = sortedQuestionIds.map((questionId) => {
+      const answer = answers[questionId];
+
+      // Safety check - ensure answer object exists
+      if (!answer || typeof answer !== 'object') {
+        console.warn(
+          `Missing or invalid answer for question ${questionId}, using default`
+        );
+        return {
+          questionId: questionId,
+          answer: '',
+          timeSpent: 0,
+        };
+      }
+
+      // Normalize answer based on type
+      let normalizedAnswer: string | number | number[];
+      if (Array.isArray(answer.answer)) {
+        // Sort array answers to ensure consistent ordering
+        normalizedAnswer = [...answer.answer].sort();
+      } else if (typeof answer.answer === 'string') {
+        // Trim whitespace from string answers
+        normalizedAnswer = answer.answer.trim();
+      } else {
+        normalizedAnswer = answer.answer;
+      }
+
+      return {
+        questionId: answer.questionId,
+        answer: normalizedAnswer,
+        timeSpent: Math.floor(answer.timeSpent), // Ensure consistent integer representation
+      };
+    });
+
+    // Return JSON string with consistent formatting
+    return JSON.stringify(canonicalAnswers, null, 0);
+  }
+
+  /**
+   * Generate hash of canonicalized answer data
+   * @param answers - The answers to hash
+   * @returns SHA-256 hash of the canonicalized answers
+   */
+  static generateAnswersHash(
+    answers: Record<
+      number,
+      {
+        questionId: number;
+        answer: string | number | number[];
+        timeSpent: number;
+      }
+    >
+  ): string {
+    const canonicalAnswers = this.canonicalizeAnswers(answers);
+    return crypto
+      .createHash(this.HASH_ALGORITHM)
+      .update(canonicalAnswers)
+      .digest('hex');
+  }
+
+  /**
+   * Create a sealed answers package
+   * @param examId - The exam identifier
+   * @param studentId - The student identifier
+   * @param answers - The student's answers
+   * @returns Sealed answers package data
+   */
+  static createSealedAnswersPackage(
+    examId: string,
+    studentId: string,
+    answers: Record<
+      number,
+      {
+        questionId: number;
+        answer: string | number | number[];
+        timeSpent: number;
+      }
+    >
+  ): ExamSubmissionData {
+    const finalAnswersHash = this.generateAnswersHash(answers);
+    const sealingTimestamp = new Date().toISOString();
+
+    return {
+      examId,
+      studentId,
+      answers,
+      finalAnswersHash,
+      sealingTimestamp,
+    };
+  }
+
+  /**
+   * Encrypt sealed answers package with submission key
+   * @param sealedAnswers - The sealed answers package
+   * @param submissionKey - Base64 encoded submission key
+   * @returns Encrypted sealed answers (iv:encrypted:authTag format)
+   */
+  static encryptSealedAnswers(
+    sealedAnswers: ExamSubmissionData,
+    submissionKey: string
+  ): string {
+    try {
+      const key = Buffer.from(submissionKey, 'base64');
+      const iv = crypto.randomBytes(12); // 12 bytes for GCM
+
+      const cipher = crypto.createCipheriv(this.AES_ALGORITHM, key, iv);
+
+      const plaintext = JSON.stringify(sealedAnswers);
+      let encrypted = cipher.update(plaintext, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+
+      const authTag = cipher.getAuthTag();
+
+      // Return in iv:encrypted:authTag format
+      return `${iv.toString('hex')}:${encrypted}:${authTag.toString('hex')}`;
+    } catch (error) {
+      console.error('Failed to encrypt sealed answers:', error);
+      throw new Error('Failed to encrypt sealed answers');
+    }
+  }
+
+  /**
+   * Encrypt submission key with RSA public key
+   * @param submissionKey - Base64 encoded submission key
+   * @returns Base64 encoded encrypted submission key
+   */
+  static encryptSubmissionKey(submissionKey: string): string {
+    try {
+      const publicKey = this.getPublicKey();
+      const buffer = Buffer.from(submissionKey, 'base64');
+
+      const encrypted = crypto.publicEncrypt(
+        {
+          key: publicKey,
+          padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+          oaepHash: 'sha256',
+        },
+        buffer
+      );
+
+      return encrypted.toString('base64');
+    } catch (error) {
+      console.error('Failed to encrypt submission key:', error);
+      throw new Error('Failed to encrypt submission key');
+    }
+  }
+
+  /**
+   * Create complete encrypted submission package
+   * @param examId - The exam identifier
+   * @param studentId - The student identifier
+   * @param answers - The student's answers
+   * @returns Complete encrypted submission package
+   */
+  static createEncryptedSubmission(
+    examId: string,
+    studentId: string,
+    answers: Record<
+      number,
+      {
+        questionId: number;
+        answer: string | number | number[];
+        timeSpent: number;
+      }
+    >
+  ): EncryptedSubmissionPackage {
+    try {
+      console.log(
+        'Creating encrypted submission for exam:',
+        examId,
+        'student:',
+        studentId
+      );
+      console.log('Answers received:', JSON.stringify(answers, null, 2));
+
+      // Validate answers structure
+      if (!answers || typeof answers !== 'object') {
+        throw new Error('Invalid answers object provided');
+      }
+
+      // Generate unique submission ID and key
+      const submissionId = this.generateSubmissionId();
+      const submissionKey = this.generateSubmissionKey();
+
+      // Create sealed answers package
+      const sealedAnswers = this.createSealedAnswersPackage(
+        examId,
+        studentId,
+        answers
+      );
+
+      // Encrypt the sealed answers with the submission key
+      const encryptedSealedAnswers = this.encryptSealedAnswers(
+        sealedAnswers,
+        submissionKey
+      );
+
+      // Encrypt the submission key with RSA public key
+      const encryptedSubmissionKey = this.encryptSubmissionKey(submissionKey);
+
+      return {
+        encryptedSealedAnswers,
+        encryptedSubmissionKey,
+        submissionId,
+      };
+    } catch (error) {
+      console.error('Failed to create encrypted submission:', error);
+      throw new Error('Failed to create encrypted submission');
+    }
+  }
+
+  /**
+   * Generate a unique session ID
+   * @returns A unique session identifier
+   */
+  static generateSessionId(): string {
+    return crypto.randomBytes(16).toString('hex');
+  }
+
+  /**
+   * Create a new exam session
+   * @param examId - The exam identifier
+   * @param studentId - The student identifier
+   * @returns New exam session data
+   */
+  static createExamSession(examId: string, studentId: string): ExamSession {
+    const now = new Date().toISOString();
+
+    return {
+      sessionId: this.generateSessionId(),
+      examId,
+      studentId,
+      examStartedAt: now,
+      lastActivity: now,
+      currentQuestionIndex: 0,
+      timeRemaining: 0, // Will be set when exam starts
+      answers: {},
+      examStarted: false,
+      examSubmitted: false,
+      autoSaveEnabled: true,
+    };
+  }
+
+  /**
+   * Update exam session with current state
+   * @param session - Current session data
+   * @param updates - Updates to apply
+   * @returns Updated session data
+   */
+  static updateExamSession(
+    session: ExamSession,
+    updates: Partial<
+      Omit<ExamSession, 'sessionId' | 'examId' | 'studentId' | 'examStartedAt'>
+    >
+  ): ExamSession {
+    return {
+      ...session,
+      ...updates,
+      lastActivity: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Prepare session data for storage
+   * @param session - Session data to save
+   * @returns Session save data with metadata
+   */
+  static prepareSessionForSave(session: ExamSession): SessionSaveData {
+    return {
+      ...session,
+      savedAt: new Date().toISOString(),
+      version: '1.0', // For future compatibility
+    };
+  }
+
+  /**
+   * Validate session data integrity
+   * @param sessionData - Session data to validate
+   * @returns true if session is valid
+   */
+  static validateSession(sessionData: SessionSaveData): boolean {
+    try {
+      // Check required fields
+      const requiredFields = [
+        'sessionId',
+        'examId',
+        'studentId',
+        'examStartedAt',
+        'lastActivity',
+        'currentQuestionIndex',
+        'timeRemaining',
+      ];
+
+      for (const field of requiredFields) {
+        if (!(field in sessionData)) {
+          console.warn(`Missing required session field: ${field}`);
+          return false;
+        }
+      }
+
+      // Validate session ID format
+      if (!/^[0-9a-f]{32}$/.test(sessionData.sessionId)) {
+        console.warn('Invalid session ID format');
+        return false;
+      }
+
+      // Validate timestamps
+      const examStartedAt = new Date(sessionData.examStartedAt);
+      const lastActivity = new Date(sessionData.lastActivity);
+      const savedAt = new Date(sessionData.savedAt);
+
+      if (
+        isNaN(examStartedAt.getTime()) ||
+        isNaN(lastActivity.getTime()) ||
+        isNaN(savedAt.getTime())
+      ) {
+        console.warn('Invalid timestamp in session data');
+        return false;
+      }
+
+      // Validate numeric fields
+      if (
+        sessionData.currentQuestionIndex < 0 ||
+        sessionData.timeRemaining < 0
+      ) {
+        console.warn('Invalid numeric values in session data');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Session validation error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if session has expired (older than 24 hours)
+   * @param sessionData - Session data to check
+   * @returns true if session is expired
+   */
+  static isSessionExpired(sessionData: SessionSaveData): boolean {
+    try {
+      const lastActivity = new Date(sessionData.lastActivity);
+      const now = new Date();
+      const hoursSinceActivity =
+        (now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60);
+
+      return hoursSinceActivity > 24; // 24 hours expiry
+    } catch (error) {
+      console.error('Error checking session expiry:', error);
+      return true; // Consider expired if we can't parse dates
+    }
   }
 }

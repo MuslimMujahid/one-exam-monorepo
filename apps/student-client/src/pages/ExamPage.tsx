@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ExamData, Answer, Question } from '../types/exam';
-import { DecryptedExamData } from '../types';
+import { DecryptedExamData, ExamSession } from '../types';
 import {
   ExamNotFound,
   ExamInstructions,
@@ -31,6 +31,124 @@ export function ExamPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isElectronAvailable, setIsElectronAvailable] = useState(false);
+
+  // Session management state
+  const [currentSession, setCurrentSession] = useState<ExamSession | null>(
+    null
+  );
+  const [isResumingSession, setIsResumingSession] = useState(false);
+  const [showFinalSubmitDialog, setShowFinalSubmitDialog] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+
+  // Auto-save session periodically
+  const autoSaveSession = useCallback(async () => {
+    if (!currentSession || !window.electron || !isElectronAvailable) {
+      return;
+    }
+
+    try {
+      const updatedSession: ExamSession = {
+        ...currentSession,
+        currentQuestionIndex,
+        timeRemaining,
+        answers,
+        examStarted,
+        examSubmitted,
+        lastActivity: new Date().toISOString(),
+      };
+
+      await window.electron.updateExamSession(
+        currentSession.sessionId,
+        updatedSession
+      );
+      setCurrentSession(updatedSession);
+    } catch (error) {
+      console.error('Failed to auto-save session:', error);
+    }
+  }, [
+    currentSession,
+    currentQuestionIndex,
+    timeRemaining,
+    answers,
+    examStarted,
+    examSubmitted,
+    isElectronAvailable,
+  ]);
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    if (!currentSession?.autoSaveEnabled || examSubmitted) {
+      return;
+    }
+
+    const interval = setInterval(autoSaveSession, 30000); // 30 seconds
+    return () => clearInterval(interval);
+  }, [autoSaveSession, currentSession?.autoSaveEnabled, examSubmitted]);
+
+  // Load or create session
+  const initializeSession = useCallback(
+    async (examId: string, studentId: string) => {
+      if (!window.electron || !isElectronAvailable) {
+        return null;
+      }
+
+      try {
+        // Check for existing sessions for this student
+        const existingSessions = await window.electron.getStudentSessions(
+          studentId
+        );
+        const examSession = existingSessions.find(
+          (session) => session.examId === examId && !session.examSubmitted
+        );
+
+        if (examSession) {
+          console.log(
+            'Found existing session, resuming...',
+            examSession.sessionId
+          );
+          setIsResumingSession(true);
+
+          // Restore session state
+          setCurrentQuestionIndex(examSession.currentQuestionIndex);
+          setTimeRemaining(examSession.timeRemaining);
+          setAnswers(examSession.answers);
+          setExamStarted(examSession.examStarted);
+          setExamSubmitted(examSession.examSubmitted);
+
+          setCurrentSession(examSession);
+          return examSession;
+        } else {
+          // Create new session
+          console.log('Creating new exam session...');
+          const newSession = await window.electron.createExamSession(
+            examId,
+            studentId
+          );
+          setCurrentSession(newSession);
+          return newSession;
+        }
+      } catch (error) {
+        console.error('Failed to initialize session:', error);
+        return null;
+      }
+    },
+    [isElectronAvailable]
+  );
+
+  // Clear session when exam is submitted
+  const clearCurrentSession = useCallback(async () => {
+    if (!currentSession || !window.electron) {
+      return;
+    }
+
+    try {
+      await window.electron.clearExamSession(currentSession.sessionId);
+      setCurrentSession(null);
+      console.log('Session cleared:', currentSession.sessionId);
+    } catch (error) {
+      console.error('Failed to clear session:', error);
+    }
+  }, [currentSession]);
 
   // Check if electron is available and load exam data
   useEffect(() => {
@@ -64,6 +182,12 @@ export function ExamPage() {
           };
 
           setExamData(examData);
+
+          // Initialize session management
+          if (user?.id) {
+            await initializeSession(decryptedData.id, user.id);
+          }
+
           setError(null);
         } catch (err) {
           console.error('Failed to load/decrypt exam data:', err);
@@ -82,7 +206,7 @@ export function ExamPage() {
     };
 
     loadExamData();
-  }, [examId, user?.id]);
+  }, [examId, user?.id, initializeSession]);
 
   // Initialize timer when exam starts
   useEffect(() => {
@@ -91,17 +215,124 @@ export function ExamPage() {
     }
   }, [examData, examStarted, examSubmitted, timeRemaining]);
 
+  // Save answers (without ending the session)
+  const handleSaveAnswers = useCallback(async () => {
+    if (!examData || !user?.id || !isElectronAvailable || !window.electron) {
+      console.error('Missing required data for saving answers');
+      return;
+    }
+
+    try {
+      console.log('Saving answers locally...');
+
+      // Save answers with encryption in one step, organized by session
+      const result = await window.electron.saveSubmissionLocally(
+        examData.id,
+        user.id,
+        answers,
+        currentSession?.sessionId // Pass session ID for organization
+      );
+
+      console.log('Answers saved successfully with ID:', result.submissionId);
+
+      // Show save confirmation
+      setShowSaveConfirmation(true);
+      setTimeout(() => setShowSaveConfirmation(false), 3000); // Hide after 3 seconds
+
+      // Note: Session remains active so student can continue the exam
+    } catch (error) {
+      console.error('Failed to save answers:', error);
+    }
+  }, [
+    examData,
+    user?.id,
+    isElectronAvailable,
+    answers,
+    currentSession?.sessionId,
+  ]);
+
+  // Final submit exam (ends the session)
+  const handleFinalSubmitExam = useCallback(async () => {
+    if (!examData || !user?.id || !isElectronAvailable || !window.electron) {
+      console.error('Missing required data for final submission');
+      return;
+    }
+
+    try {
+      console.log('Saving final submission locally...');
+
+      // Save final answers with encryption in one step, organized by session
+      const result = await window.electron.saveSubmissionLocally(
+        examData.id,
+        user.id,
+        answers,
+        currentSession?.sessionId // Pass session ID for organization
+      );
+
+      console.log(
+        'Final submission saved successfully with ID:',
+        result.submissionId
+      );
+
+      // Mark exam as submitted
+      setExamSubmitted(true);
+
+      // Clear the session since exam is completed
+      await clearCurrentSession();
+
+      // Note: The actual upload to backend would happen later
+      // when internet connection is available
+    } catch (error) {
+      console.error('Failed to submit exam:', error);
+      // You might want to show an error message to the user here
+      // For now, we'll still mark as submitted to prevent data loss
+      setExamSubmitted(true);
+
+      // Try to clear session even if submission failed
+      try {
+        await clearCurrentSession();
+      } catch (sessionError) {
+        console.error(
+          'Failed to clear session after submission error:',
+          sessionError
+        );
+      }
+    }
+  }, [
+    examData,
+    user?.id,
+    isElectronAvailable,
+    answers,
+    currentSession?.sessionId,
+    clearCurrentSession,
+  ]);
+
+  // Show confirmation dialog for final submit
+  const handleFinalSubmitClick = useCallback(() => {
+    setShowFinalSubmitDialog(true);
+  }, []);
+
+  // Confirm final submit
+  const confirmFinalSubmit = useCallback(async () => {
+    setShowFinalSubmitDialog(false);
+    await handleFinalSubmitExam();
+  }, [handleFinalSubmitExam]);
+
+  // Cancel final submit
+  const cancelFinalSubmit = useCallback(() => {
+    setShowFinalSubmitDialog(false);
+  }, []);
+
   // Timer countdown
   useEffect(() => {
     if (timeRemaining > 0 && examStarted && !examSubmitted) {
       const timer = setTimeout(() => setTimeRemaining(timeRemaining - 1), 1000);
       return () => clearTimeout(timer);
     } else if (timeRemaining === 0 && examStarted && !examSubmitted) {
-      setExamSubmitted(true);
-      // Here you would typically send answers to the backend
-      console.log('Exam auto-submitted due to time expiry:', answers);
+      // Auto-submit when time expires (final submit)
+      handleFinalSubmitExam();
     }
-  }, [timeRemaining, examStarted, examSubmitted, answers]);
+  }, [timeRemaining, examStarted, examSubmitted, handleFinalSubmitExam]);
 
   // Format time display
   const formatTime = (seconds: number) => {
@@ -129,19 +360,32 @@ export function ExamPage() {
   };
 
   // Start exam
-  const handleStartExam = () => {
+  const handleStartExam = useCallback(async () => {
     if (examData) {
       setExamStarted(true);
-      setTimeRemaining(examData.timeLimit * 60); // Initialize timer immediately
-    }
-  };
+      const timeLimit = examData.timeLimit * 60;
+      setTimeRemaining(timeLimit);
 
-  // Submit exam
-  const handleSubmitExam = () => {
-    setExamSubmitted(true);
-    // Here you would typically send answers to the backend
-    console.log('Exam submitted:', answers);
-  };
+      // Update session with start information
+      if (currentSession && window.electron) {
+        try {
+          const updatedSession = {
+            ...currentSession,
+            examStarted: true,
+            timeRemaining: timeLimit,
+            lastActivity: new Date().toISOString(),
+          };
+          await window.electron.updateExamSession(
+            currentSession.sessionId,
+            updatedSession
+          );
+          setCurrentSession(updatedSession);
+        } catch (error) {
+          console.error('Failed to update session on exam start:', error);
+        }
+      }
+    }
+  }, [examData, currentSession]);
 
   // Navigation functions
   const goToQuestion = (index: number) => {
@@ -170,11 +414,27 @@ export function ExamPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <LoadingSpinner className="mx-auto mb-4" />
-          <p className="text-gray-600">Loading exam data...</p>
+          <p className="text-gray-600">
+            {isResumingSession
+              ? 'Resuming exam session...'
+              : 'Loading exam data...'}
+          </p>
           {isElectronAvailable && (
             <p className="text-sm text-gray-500 mt-2">
-              Decrypting exam content
+              {isResumingSession
+                ? 'Restoring your progress'
+                : 'Decrypting exam content'}
             </p>
+          )}
+          {isResumingSession && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <span role="img" aria-label="document">
+                  📝
+                </span>{' '}
+                We found your previous session and are restoring your progress
+              </p>
+            </div>
           )}
         </div>
       </div>
@@ -236,7 +496,8 @@ export function ExamPage() {
         studentName={user?.name || user?.email}
         timeRemaining={timeRemaining}
         formatTime={formatTime}
-        onSubmitExam={handleSubmitExam}
+        onSaveAnswers={handleSaveAnswers}
+        onFinalSubmit={handleFinalSubmitClick}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -272,6 +533,46 @@ export function ExamPage() {
           </div>
         </div>
       </div>
+
+      {/* Save Confirmation Toast */}
+      {showSaveConfirmation && (
+        <div className="fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center space-x-2">
+          <span role="img" aria-label="checkmark">
+            ✅
+          </span>
+          <span>Answers saved successfully!</span>
+        </div>
+      )}
+
+      {/* Final Submit Confirmation Dialog */}
+      {showFinalSubmitDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Final Submit Confirmation
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to submit your exam? This action will end
+              your exam session and cannot be undone. Make sure you have
+              reviewed all your answers.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={cancelFinalSubmit}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmFinalSubmit}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              >
+                Yes, Final Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

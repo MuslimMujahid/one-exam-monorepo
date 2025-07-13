@@ -9,7 +9,8 @@ interface ExamHeaderProps {
   studentName?: string;
   timeRemaining: number;
   formatTime: (seconds: number) => string;
-  onSubmitExam: () => void;
+  onSaveAnswers: () => void;
+  onFinalSubmit: () => void;
 }
 
 export function ExamHeader({
@@ -19,7 +20,8 @@ export function ExamHeader({
   studentName,
   timeRemaining,
   formatTime,
-  onSubmitExam,
+  onSaveAnswers,
+  onFinalSubmit,
 }: ExamHeaderProps) {
   return (
     <header className="bg-white shadow-sm border-b">
@@ -37,11 +39,19 @@ export function ExamHeader({
             <ExamTimer timeRemaining={timeRemaining} formatTime={formatTime} />
 
             <Button
-              onClick={onSubmitExam}
+              onClick={onSaveAnswers}
               variant="outline"
-              className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              className="text-green-600 border-green-600 hover:bg-green-50"
             >
-              Submit Exam
+              Save Answers
+            </Button>
+
+            <Button
+              onClick={onFinalSubmit}
+              variant="default"
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              Final Submit
             </Button>
           </div>
         </div>
