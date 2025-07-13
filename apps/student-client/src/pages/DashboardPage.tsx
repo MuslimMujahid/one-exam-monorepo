@@ -45,16 +45,35 @@ export function DashboardPage() {
   } = useExamUtils();
 
   // Get exam sessions for the current user
-  const { getActiveSessionForExam } = useExamSessions(user?.id);
+  const {
+    getActiveSessionForExam,
+    getSubmittedSessionForExam,
+    isExamSubmitted,
+  } = useExamSessions(user?.id);
 
   // Create a map of exam sessions for quick lookup
   const examSessions = useMemo(() => {
     const sessionsMap: Record<string, SessionSaveData | null> = {};
+    const submittedSessionsMap: Record<string, SessionSaveData | null> = {};
+    const submittedExamsMap: Record<string, boolean> = {};
+
     exams.forEach((exam) => {
       sessionsMap[exam.id] = getActiveSessionForExam(exam.id);
+      submittedSessionsMap[exam.id] = getSubmittedSessionForExam(exam.id);
+      submittedExamsMap[exam.id] = isExamSubmitted(exam.id);
     });
-    return sessionsMap;
-  }, [exams, getActiveSessionForExam]);
+
+    return {
+      activeSessions: sessionsMap,
+      submittedSessions: submittedSessionsMap,
+      submittedExams: submittedExamsMap,
+    };
+  }, [
+    exams,
+    getActiveSessionForExam,
+    getSubmittedSessionForExam,
+    isExamSubmitted,
+  ]);
 
   // Join exam modal state
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -153,7 +172,7 @@ export function DashboardPage() {
     // Find the exam to get its examCode for offline storage
     const exam = exams.find((e) => e.id === examId);
     if (exam) {
-      // Use examCode for offline exam access
+      // Use examId for navigation (database ID)
       navigate(`/exam/${examId}`);
     } else {
       console.error('Exam not found for ID:', examId);
@@ -206,7 +225,9 @@ export function DashboardPage() {
               exams={exams}
               downloadedExams={downloadedExams}
               downloadingExams={downloadingExams}
-              examSessions={examSessions}
+              activeExamSessions={examSessions.activeSessions}
+              submittedExamSessions={examSessions.submittedSessions}
+              submittedExams={examSessions.submittedExams}
               getExamStatus={getExamStatus}
               canTakeExam={canTakeExam}
               getFormattedTimeUntilStart={getFormattedTimeUntilStart}

@@ -48,6 +48,26 @@ export function useExamSessions(studentId?: string) {
     [sessions]
   );
 
+  // Get submitted session for a specific exam
+  const getSubmittedSessionForExam = useCallback(
+    (examId: string): SessionSaveData | null => {
+      return (
+        sessions.find(
+          (session) => session.examId === examId && session.examSubmitted
+        ) || null
+      );
+    },
+    [sessions]
+  );
+
+  // Check if an exam has been submitted
+  const isExamSubmitted = useCallback(
+    (examId: string): boolean => {
+      return getSubmittedSessionForExam(examId) !== null;
+    },
+    [getSubmittedSessionForExam]
+  );
+
   // Check if there's an active session for a specific exam
   const hasActiveSession = useCallback(
     (examId: string): boolean => {
@@ -69,6 +89,8 @@ export function useExamSessions(studentId?: string) {
     error,
     refetch: fetchSessions,
     getActiveSessionForExam,
+    getSubmittedSessionForExam,
+    isExamSubmitted,
     hasActiveSession,
     getActiveSessions,
   };

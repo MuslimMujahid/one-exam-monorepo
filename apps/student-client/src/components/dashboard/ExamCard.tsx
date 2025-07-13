@@ -12,6 +12,8 @@ interface ExamCardProps {
   timeUntilStart?: string;
   timeUntilEnd?: string;
   activeSession?: SessionSaveData | null;
+  submittedSession?: SessionSaveData | null;
+  isSubmitted: boolean;
   onDownload: (examCode: string) => void;
   onTakeExam: (examId: string) => void;
 }
@@ -25,6 +27,8 @@ export function ExamCard({
   timeUntilStart,
   timeUntilEnd,
   activeSession,
+  submittedSession,
+  isSubmitted,
   onDownload,
   onTakeExam,
 }: ExamCardProps) {
@@ -83,7 +87,7 @@ export function ExamCard({
                 Downloaded
               </span>
             )}
-            {activeSession && (
+            {activeSession && !isSubmitted && (
               <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                 <span role="img" aria-label="Clock">
                   ⏰
@@ -91,11 +95,19 @@ export function ExamCard({
                 In Progress
               </span>
             )}
+            {isSubmitted && (
+              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <span role="img" aria-label="Checkmark">
+                  ✅
+                </span>{' '}
+                Completed
+              </span>
+            )}
           </div>
         </div>
 
         <div className="mt-6 space-y-2">
-          {canTakeExam && (
+          {canTakeExam && !isSubmitted && (
             <Button
               onClick={() => onDownload(exam.examCode)}
               variant="outline"
@@ -113,7 +125,7 @@ export function ExamCard({
                 : 'Download'}
             </Button>
           )}
-          {canTakeExam && isDownloaded ? (
+          {canTakeExam && isDownloaded && !isSubmitted ? (
             <Button
               className={`w-full text-white ${
                 activeSession
@@ -123,6 +135,16 @@ export function ExamCard({
               onClick={() => onTakeExam(exam.id)}
             >
               {activeSession ? 'Resume Exam' : 'Take Exam'}
+            </Button>
+          ) : isSubmitted ? (
+            <Button
+              disabled
+              className="w-full bg-green-100 text-green-700 cursor-not-allowed border border-green-300"
+            >
+              <span role="img" aria-label="Checkmark">
+                ✅
+              </span>{' '}
+              Exam Completed
             </Button>
           ) : (
             <Button

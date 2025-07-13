@@ -7,7 +7,9 @@ interface ExamGridProps {
   exams: Exam[];
   downloadedExams: Record<string, boolean>;
   downloadingExams: Set<string>;
-  examSessions: Record<string, SessionSaveData | null>;
+  activeExamSessions: Record<string, SessionSaveData | null>;
+  submittedExamSessions: Record<string, SessionSaveData | null>;
+  submittedExams: Record<string, boolean>;
   getExamStatus: (exam: Exam) => ExamStatus;
   canTakeExam: (exam: Exam) => boolean;
   getFormattedTimeUntilStart: (exam: Exam) => string;
@@ -20,7 +22,9 @@ export function ExamGrid({
   exams,
   downloadedExams,
   downloadingExams,
-  examSessions,
+  activeExamSessions,
+  submittedExamSessions,
+  submittedExams,
   getExamStatus,
   canTakeExam,
   getFormattedTimeUntilStart,
@@ -46,6 +50,8 @@ export function ExamGrid({
       {exams.map((exam) => {
         const status = getExamStatus(exam);
         const canTake = canTakeExam(exam);
+        console.log('Exam ID:', exam.id, 'Submitted:', submittedExams[exam.id]);
+        const isSubmitted = submittedExams[exam.id] || false;
 
         return (
           <ExamCard
@@ -54,8 +60,10 @@ export function ExamGrid({
             status={status}
             canTakeExam={canTake}
             isDownloaded={downloadedExams[exam.id] || false}
-            isDownloading={downloadingExams.has(exam.id)}
-            activeSession={examSessions[exam.id] || null}
+            isDownloading={downloadingExams.has(exam.examCode)}
+            activeSession={activeExamSessions[exam.id] || null}
+            submittedSession={submittedExamSessions[exam.id] || null}
+            isSubmitted={isSubmitted}
             timeUntilStart={
               status.text === 'Scheduled'
                 ? getFormattedTimeUntilStart(exam)

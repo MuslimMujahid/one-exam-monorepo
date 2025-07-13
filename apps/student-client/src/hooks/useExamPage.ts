@@ -44,7 +44,7 @@ export function useExamPage({ examId }: UseExamPageOptions) {
 
   // Session management
   const session = useExamSession({
-    examId: examData?.id || examId,
+    examId: examId, // Use examId from URL (which is the database ID)
     studentId: user?.id || '',
     isElectronAvailable,
     onSessionRestored: (sessionData) => {
@@ -75,7 +75,10 @@ export function useExamPage({ examId }: UseExamPageOptions) {
       isElectronAvailable &&
       !session.currentSession
     ) {
-      session.initializeSession();
+      session.initializeSession().catch((error) => {
+        console.error('Failed to initialize session:', error);
+        // This error will be handled by the session hook
+      });
     }
   }, [examData, user?.id, isElectronAvailable, session]);
 
@@ -248,7 +251,7 @@ export function useExamPage({ examId }: UseExamPageOptions) {
     // Data
     examData,
     isLoading,
-    error,
+    error: error || session.sessionError, // Include session errors with exam data errors
     isElectronAvailable,
     user,
 

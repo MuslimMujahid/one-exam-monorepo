@@ -19,6 +19,7 @@ export function useExamSession({
   );
   const [isResumingSession, setIsResumingSession] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   // Initialize or resume session
   const initializeSession = useCallback(async () => {
@@ -27,10 +28,27 @@ export function useExamSession({
     }
 
     try {
+      setSessionError(null); // Clear any previous errors
+
       // Check for existing sessions for this student
       const existingSessions = await window.electron.getStudentSessions(
         studentId
       );
+
+      // First check if there's any submitted session for this exam
+      const submittedSession = existingSessions.find(
+        (session) => session.examId === examId && session.examSubmitted
+      );
+
+      if (submittedSession) {
+        console.log('Found submitted session for this exam. Access denied.');
+        const errorMsg =
+          'You have already completed this exam. You cannot retake it.';
+        setSessionError(errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      // Then check for active (non-submitted) sessions
       const examSession = existingSessions.find(
         (session) => session.examId === examId && !session.examSubmitted
       );
@@ -56,6 +74,9 @@ export function useExamSession({
       }
     } catch (error) {
       console.error('Failed to initialize session:', error);
+      const errorMsg =
+        error instanceof Error ? error.message : 'Failed to initialize session';
+      setSessionError(errorMsg);
       return null;
     }
   }, [examId, studentId, isElectronAvailable, onSessionRestored]);
@@ -137,6 +158,7 @@ export function useExamSession({
     currentSession,
     isResumingSession,
     lastSaveTime,
+    sessionError,
     initializeSession,
     autoSaveSession,
     clearCurrentSession,

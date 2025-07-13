@@ -25,11 +25,10 @@ export function useExamData({ examId, userId }: UseExamDataOptions) {
       setIsElectronAvailable(true);
 
       try {
-        // The examId parameter now contains the examCode (passed from dashboard)
-        // Try to decrypt using the examId as examCode
+        // Use examId directly for decryption
         const decryptedData: DecryptedExamData =
           await window.electron.decryptExamData(
-            examId, // examId now contains examCode
+            examId, // Use examId directly
             userId // Pass user ID for validation
           );
 
