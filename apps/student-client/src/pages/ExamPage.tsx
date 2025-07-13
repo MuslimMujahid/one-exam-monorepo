@@ -10,7 +10,6 @@ import {
   QuestionDisplay,
   ExamNavigation,
   DebugPanel,
-  Notification,
   ConfirmationDialog,
 } from '../components/exam';
 import { AlertBanner, LoadingSpinner } from '@one-exam-monorepo/ui';
@@ -160,14 +159,6 @@ export function ExamPage() {
         formatTime={exam.formatTime}
         onManualSave={exam.handleManualSessionSave}
         onClose={exam.hideDebugPanel}
-      />
-
-      {/* Save Confirmation Notification */}
-      <Notification
-        show={exam.showSaveConfirmation}
-        message="Answers saved successfully!"
-        type="success"
-        onClose={() => exam.setShowSaveConfirmation(false)}
       />
 
       {/* Final Submit Confirmation Dialog */}

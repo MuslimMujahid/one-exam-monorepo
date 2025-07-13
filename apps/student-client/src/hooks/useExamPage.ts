@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useExamData } from './useExamData';
 import { useExamState } from './useExamState';
@@ -15,7 +16,6 @@ export function useExamPage({ examId }: UseExamPageOptions) {
 
   // Dialog states
   const [showFinalSubmitDialog, setShowFinalSubmitDialog] = useState(false);
-  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   // Track if we're in the middle of session restoration
   const [isRestoringSession, setIsRestoringSession] = useState(false);
@@ -137,11 +137,11 @@ export function useExamPage({ examId }: UseExamPageOptions) {
 
       console.log('Answers saved successfully with ID:', result.submissionId);
 
-      // Show save confirmation
-      setShowSaveConfirmation(true);
-      setTimeout(() => setShowSaveConfirmation(false), 3000);
+      // Show save confirmation toast
+      toast.success('Answers saved successfully!');
     } catch (error) {
       console.error('Failed to save answers:', error);
+      toast.error('Failed to save answers. Please try again.');
     }
   }, [examData, user?.id, isElectronAvailable, examState.answers, session]);
 
@@ -275,8 +275,6 @@ export function useExamPage({ examId }: UseExamPageOptions) {
     // Dialog states
     showFinalSubmitDialog,
     setShowFinalSubmitDialog,
-    showSaveConfirmation,
-    setShowSaveConfirmation,
 
     // Debug
     showDebugPanel: debug.showDebugPanel,

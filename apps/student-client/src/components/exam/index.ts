@@ -7,5 +7,4 @@ export { ExamSubmission } from './ExamSubmission';
 export { ExamNotFound } from './ExamNotFound';
 export { ExamHeader } from './ExamHeader';
 export { DebugPanel } from './DebugPanel';
-export { Notification } from './Notification';
 export { ConfirmationDialog } from './ConfirmationDialog';
