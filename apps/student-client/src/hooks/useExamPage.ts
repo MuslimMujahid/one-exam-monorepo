@@ -171,19 +171,19 @@ export function useExamPage({ examId }: UseExamPageOptions) {
       // Mark exam as submitted
       examState.submitExam();
 
-      // Clear the session since exam is completed
-      await session.clearCurrentSession();
+      // Mark the session as submitted
+      await session.markSessionSubmitted();
     } catch (error) {
       console.error('Failed to submit exam:', error);
       // Still mark as submitted to prevent data loss
       examState.submitExam();
 
-      // Try to clear session even if submission failed
+      // Try to mark session as submitted even if submission failed
       try {
-        await session.clearCurrentSession();
+        await session.markSessionSubmitted();
       } catch (sessionError) {
         console.error(
-          'Failed to clear session after submission error:',
+          'Failed to mark session as submitted after submission error:',
           sessionError
         );
       }

@@ -116,6 +116,7 @@ declare global {
         sessionId: string,
         updates: Partial<ExamSession>
       ) => Promise<ExamSession>;
+      markExamSessionSubmitted: (sessionId: string) => Promise<ExamSession>;
       clearExamSession: (sessionId: string) => Promise<boolean>;
       cleanupExpiredSessions: () => Promise<number>;
     };

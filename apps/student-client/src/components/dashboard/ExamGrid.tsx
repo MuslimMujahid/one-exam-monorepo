@@ -50,7 +50,6 @@ export function ExamGrid({
       {exams.map((exam) => {
         const status = getExamStatus(exam);
         const canTake = canTakeExam(exam);
-        console.log('Exam ID:', exam.id, 'Submitted:', submittedExams[exam.id]);
         const isSubmitted = submittedExams[exam.id] || false;
 
         return (

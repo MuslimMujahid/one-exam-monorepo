@@ -110,16 +110,43 @@ export function useExamSession({
     [currentSession, isElectronAvailable]
   );
 
-  // Clear session when exam is submitted
+  // Mark session as submitted when exam is completed
+  const markSessionSubmitted = useCallback(async () => {
+    if (!currentSession || !window.electron) {
+      return;
+    }
+
+    try {
+      const submittedSession = await window.electron.markExamSessionSubmitted(
+        currentSession.sessionId
+      );
+      // Update current session to reflect submission
+      setCurrentSession(submittedSession);
+      console.log('Session marked as submitted:', currentSession.sessionId);
+    } catch (error) {
+      console.error('Failed to mark session as submitted:', error);
+    }
+  }, [currentSession]);
+
+  // Clear session when exam is abandoned (not submitted)
   const clearCurrentSession = useCallback(async () => {
     if (!currentSession || !window.electron) {
       return;
     }
 
     try {
-      await window.electron.clearExamSession(currentSession.sessionId);
-      setCurrentSession(null);
-      console.log('Session cleared:', currentSession.sessionId);
+      const cleared = await window.electron.clearExamSession(
+        currentSession.sessionId
+      );
+      if (cleared) {
+        setCurrentSession(null);
+        console.log('Session cleared:', currentSession.sessionId);
+      } else {
+        console.log(
+          'Session not cleared (may be submitted):',
+          currentSession.sessionId
+        );
+      }
     } catch (error) {
       console.error('Failed to clear session:', error);
     }
@@ -161,6 +188,7 @@ export function useExamSession({
     sessionError,
     initializeSession,
     autoSaveSession,
+    markSessionSubmitted,
     clearCurrentSession,
     saveAnswers,
   };

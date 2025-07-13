@@ -612,6 +612,42 @@ ipcMain.handle(
   }
 );
 
+// Mark exam session as submitted and archive it (instead of clearing)
+ipcMain.handle('mark-exam-session-submitted', async (_, sessionId: string) => {
+  try {
+    const { ElectronCrypto } = await import('../lib/crypto');
+    const userDataPath = app.getPath('userData');
+    const sessionsDir = join(userDataPath, 'exam-sessions');
+    const sessionDir = join(sessionsDir, sessionId);
+    const filePath = join(sessionDir, `${sessionId}.json`);
+
+    // Load existing session
+    const data = await fs.readFile(filePath, 'utf-8');
+    const sessionData = JSON.parse(data);
+
+    // Mark session as submitted
+    const submittedSession = {
+      ...sessionData,
+      examSubmitted: true,
+      submittedAt: new Date().toISOString(),
+      lastActivity: new Date().toISOString(),
+    };
+
+    // Prepare session for save (adds savedAt and version)
+    const sessionToSave =
+      ElectronCrypto.prepareSessionForSave(submittedSession);
+
+    // Save the submitted session
+    await fs.writeFile(filePath, JSON.stringify(sessionToSave, null, 2));
+
+    console.log(`Marked exam session as submitted: ${sessionId}`);
+    return submittedSession;
+  } catch (error) {
+    console.error('Failed to mark exam session as submitted:', error);
+    throw error;
+  }
+});
+
 // Clear exam session (delete from storage)
 ipcMain.handle('clear-exam-session', async (_, sessionId: string) => {
   try {
@@ -619,6 +655,25 @@ ipcMain.handle('clear-exam-session', async (_, sessionId: string) => {
     const sessionsDir = join(userDataPath, 'exam-sessions');
     const sessionDir = join(sessionsDir, sessionId);
     const sessionFilePath = join(sessionDir, `${sessionId}.json`);
+
+    // Check if session is submitted before clearing
+    try {
+      const data = await fs.readFile(sessionFilePath, 'utf-8');
+      const sessionData = JSON.parse(data);
+
+      if (sessionData.examSubmitted) {
+        console.log(
+          `Refusing to clear submitted session: ${sessionId}. Use archive-submitted-session instead.`
+        );
+        return false; // Don't clear submitted sessions
+      }
+    } catch (error) {
+      // If we can't read the session, proceed with clearing
+      console.warn(
+        `Could not read session ${sessionId} for submission check:`,
+        error
+      );
+    }
 
     // Clear session file
     await fs.unlink(sessionFilePath);

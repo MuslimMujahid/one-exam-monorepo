@@ -80,6 +80,8 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.invoke('get-student-sessions', studentId),
   updateExamSession: (sessionId: string, updates: Partial<ExamSession>) =>
     ipcRenderer.invoke('update-exam-session', sessionId, updates),
+  markExamSessionSubmitted: (sessionId: string) =>
+    ipcRenderer.invoke('mark-exam-session-submitted', sessionId),
   clearExamSession: (sessionId: string) =>
     ipcRenderer.invoke('clear-exam-session', sessionId),
   cleanupExpiredSessions: () => ipcRenderer.invoke('cleanup-expired-sessions'),
