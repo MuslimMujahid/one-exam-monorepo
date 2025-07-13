@@ -70,16 +70,17 @@ model Question {
 }
 
 model ExamSession {
-  id        String        @id @default(uuid())
-  startTime DateTime      @default(now())
-  endTime   DateTime?
-  status    SessionStatus @default(IN_PROGRESS)
-  score     Float?
-  examId    String
-  exam      Exam          @relation(fields: [examId], references: [id])
-  userId    String
-  user      User          @relation(fields: [userId], references: [id])
-  answers   ExamAnswer[]
+  id         String          @id @default(uuid())
+  startTime  DateTime        @default(now())
+  endTime    DateTime?
+  status     SessionStatus   @default(IN_PROGRESS)
+  score      Float?
+  examId     String
+  exam       Exam            @relation(fields: [examId], references: [id])
+  userId     String
+  user       User            @relation(fields: [userId], references: [id])
+  answers    ExamAnswer[]
+  submission ExamSubmission?
 
   @@unique([examId, userId])
 }
@@ -94,6 +95,20 @@ model ExamAnswer {
   question    Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, questionId])
+}
+
+model ExamSubmission {
+  id                String      @id @default(uuid())
+  sessionId         String      @unique
+  session           ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  finalAnswers      Json // Combined final answers from all submissions
+  suspiciousLevel   Int         @default(0) // 0-100 scale
+  detectedAnomalies Json // Array of detected suspicious activities
+  submissionsCount  Int         @default(1) // Number of submissions processed
+  submittedAt       DateTime    @default(now())
+  analyzedAt        DateTime    @default(now())
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 }
 
 model Attachment {

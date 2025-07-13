@@ -4,6 +4,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { CryptoModule } from '../crypto/crypto.module';
 import { TeacherExamsService } from './teacher-exams.service';
 import { StudentExamService } from './student-exams.service';
+import { OfflineSubmissionService } from './offline-submission.service';
 import { StudentExamsController } from './student-exams.controller';
 import { ExamSessionController } from './exam-session.controller';
 import { ExamSessionService } from './exam-session.service';
@@ -15,7 +16,12 @@ import { ExamSessionService } from './exam-session.service';
     TeacherExamsController,
     ExamSessionController,
   ],
-  providers: [StudentExamService, TeacherExamsService, ExamSessionService],
+  providers: [
+    StudentExamService,
+    TeacherExamsService,
+    ExamSessionService,
+    OfflineSubmissionService,
+  ],
   exports: [],
 })
 export class ExamsModule {}
