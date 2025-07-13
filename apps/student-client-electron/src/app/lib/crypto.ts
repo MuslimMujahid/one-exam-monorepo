@@ -2,6 +2,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
+import { AnswersMap, canonicalizeAnswers } from '@one-exam-monorepo/utils';
 
 // License data interface (matching the backend)
 export interface LicenseData {
@@ -456,79 +457,12 @@ export class ElectronCrypto {
   }
 
   /**
-   * Canonicalize answer data for consistent hashing
-   * @param answers - The answers object to canonicalize
-   * @returns Canonicalized string representation
-   */
-  static canonicalizeAnswers(
-    answers: Record<
-      number,
-      {
-        questionId: number;
-        answer: string | number | number[];
-        timeSpent: number;
-      }
-    >
-  ): string {
-    // Sort by question ID to ensure consistent ordering
-    const sortedQuestionIds = Object.keys(answers)
-      .map(Number)
-      .sort((a, b) => a - b);
-
-    const canonicalAnswers = sortedQuestionIds.map((questionId) => {
-      const answer = answers[questionId];
-
-      // Safety check - ensure answer object exists
-      if (!answer || typeof answer !== 'object') {
-        console.warn(
-          `Missing or invalid answer for question ${questionId}, using default`
-        );
-        return {
-          questionId: questionId,
-          answer: '',
-          timeSpent: 0,
-        };
-      }
-
-      // Normalize answer based on type
-      let normalizedAnswer: string | number | number[];
-      if (Array.isArray(answer.answer)) {
-        // Sort array answers to ensure consistent ordering
-        normalizedAnswer = [...answer.answer].sort();
-      } else if (typeof answer.answer === 'string') {
-        // Trim whitespace from string answers
-        normalizedAnswer = answer.answer.trim();
-      } else {
-        normalizedAnswer = answer.answer;
-      }
-
-      return {
-        questionId: answer.questionId,
-        answer: normalizedAnswer,
-        timeSpent: Math.floor(answer.timeSpent), // Ensure consistent integer representation
-      };
-    });
-
-    // Return JSON string with consistent formatting
-    return JSON.stringify(canonicalAnswers, null, 0);
-  }
-
-  /**
    * Generate hash of canonicalized answer data
    * @param answers - The answers to hash
    * @returns SHA-256 hash of the canonicalized answers
    */
-  static generateAnswersHash(
-    answers: Record<
-      number,
-      {
-        questionId: number;
-        answer: string | number | number[];
-        timeSpent: number;
-      }
-    >
-  ): string {
-    const canonicalAnswers = this.canonicalizeAnswers(answers);
+  static generateAnswersHash(answers: AnswersMap): string {
+    const canonicalAnswers = canonicalizeAnswers(answers);
     return crypto
       .createHash(this.HASH_ALGORITHM)
       .update(canonicalAnswers)

@@ -1,4 +1,5 @@
 import { ElectronCrypto, EncryptedSubmissionPackage } from './crypto';
+import { canonicalizeAnswers } from '@one-exam-monorepo/utils';
 
 /**
  * Test utilities for validating the submission encryption/decryption process
@@ -95,8 +96,8 @@ export class SubmissionTestUtils {
       },
     };
 
-    const canonical1 = ElectronCrypto.canonicalizeAnswers(answers1);
-    const canonical2 = ElectronCrypto.canonicalizeAnswers(answers2);
+    const canonical1 = canonicalizeAnswers(answers1);
+    const canonical2 = canonicalizeAnswers(answers2);
 
     console.log('Canonical 1:', canonical1);
     console.log('Canonical 2:', canonical2);

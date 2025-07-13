@@ -76,7 +76,7 @@ model ExamSession {
   status     SessionStatus   @default(IN_PROGRESS)
   score      Float?
   examId     String
-  exam       Exam            @relation(fields: [examId], references: [id])
+  exam       Exam            @relation(fields: [examId], references: [id], onDelete: Cascade)
   userId     String
   user       User            @relation(fields: [userId], references: [id])
   answers    ExamAnswer[]

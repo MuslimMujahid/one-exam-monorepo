@@ -7,16 +7,15 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { UserFromJwt } from '../auth/jwt.strategy';
 import { SubmitOfflineSubmissionsDto } from './offline-submission.schema';
+import {
+  AnswerData,
+  AnswersMap,
+  canonicalizeAnswers,
+} from '@one-exam-monorepo/utils';
 import * as crypto from 'crypto';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as yauzl from 'yauzl';
-
-interface AnswerData {
-  questionId: number;
-  answer: string | number | number[];
-  timeSpent: number;
-}
 
 interface Question {
   id: string;
@@ -63,7 +62,7 @@ interface DecryptedSubmission {
   savedAt: string;
   examId: string;
   studentId: string;
-  answers: Record<string, AnswerData>;
+  answers: AnswersMap;
   finalAnswersHash: string;
   sealingTimestamp: string;
 }
@@ -221,63 +220,19 @@ export class OfflineSubmissionService {
   /**
    * Verify answer hash integrity
    */
-  private verifyAnswerHash(
-    answers: Record<string, AnswerData>,
-    expectedHash: string
-  ): boolean {
+  private verifyAnswerHash(answers: AnswersMap, expectedHash: string): boolean {
     try {
       // Canonicalize answers (same logic as client)
-      const canonicalAnswers = this.canonicalizeAnswers(answers);
+      const canonicalAnswers = canonicalizeAnswers(answers);
       const hash = crypto
         .createHash('sha256')
-        .update(JSON.stringify(canonicalAnswers))
+        .update(canonicalAnswers)
         .digest('hex');
       return hash === expectedHash;
     } catch (error) {
       this.logger.warn('Failed to verify answer hash:', error);
       return false;
     }
-  }
-
-  /**
-   * Canonicalize answers for consistent hashing
-   */
-  private canonicalizeAnswers(
-    answers: Record<string, AnswerData>
-  ): Record<string, AnswerData> {
-    const canonical: Record<string, AnswerData> = {};
-
-    // Sort by question ID
-    const sortedKeys = Object.keys(answers).sort(
-      (a, b) => parseInt(a) - parseInt(b)
-    );
-
-    for (const key of sortedKeys) {
-      const answer = answers[key];
-      canonical[key] = {
-        questionId: answer.questionId,
-        answer: this.canonicalizeAnswer(answer.answer),
-        timeSpent: answer.timeSpent,
-      };
-    }
-
-    return canonical;
-  }
-
-  /**
-   * Canonicalize individual answer
-   */
-  private canonicalizeAnswer(
-    answer: string | number | number[]
-  ): string | number | number[] {
-    if (typeof answer === 'string') {
-      return answer.trim();
-    } else if (Array.isArray(answer)) {
-      return [...answer].sort();
-    } else if (typeof answer === 'number') {
-      return answer;
-    }
-    return answer;
   }
 
   /**
@@ -392,10 +347,7 @@ export class OfflineSubmissionService {
   /**
    * Count changed answers between two submissions
    */
-  private countChangedAnswers(
-    prev: Record<string, AnswerData>,
-    curr: Record<string, AnswerData>
-  ): number {
+  private countChangedAnswers(prev: AnswersMap, curr: AnswersMap): number {
     let changes = 0;
     const allKeys = new Set([...Object.keys(prev), ...Object.keys(curr)]);
 
@@ -432,9 +384,7 @@ export class OfflineSubmissionService {
   /**
    * Combine multiple submissions into final answers
    */
-  private combineSubmissions(
-    submissions: DecryptedSubmission[]
-  ): Record<string, AnswerData> {
+  private combineSubmissions(submissions: DecryptedSubmission[]): AnswersMap {
     // Use the latest submission as the base, but could implement more sophisticated merging logic
     const latestSubmission = submissions.sort(
       (a, b) =>
@@ -784,10 +734,7 @@ export class OfflineSubmissionService {
   /**
    * Basic score calculation
    */
-  private calculateScore(
-    answers: Record<string, AnswerData>,
-    questions: Question[]
-  ): number {
+  private calculateScore(answers: AnswersMap, questions: Question[]): number {
     let earnedPoints = 0;
     let totalPoints = 0;
 
