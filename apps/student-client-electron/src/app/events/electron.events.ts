@@ -23,7 +23,7 @@ ipcMain.handle('get-app-version', () => {
 });
 
 // Save exam data to local storage
-ipcMain.handle('save-exam-data', async (_, examCode: string, data: object) => {
+ipcMain.handle('save-exam-data', async (_, examId: string, data: object) => {
   try {
     const userDataPath = app.getPath('userData');
     const examsDir = join(userDataPath, OFFLINE_EXAM_CONFIG.EXAMS_DIRECTORY);
@@ -33,11 +33,11 @@ ipcMain.handle('save-exam-data', async (_, examCode: string, data: object) => {
 
     const filePath = join(
       examsDir,
-      `${examCode}${OFFLINE_EXAM_CONFIG.EXAM_FILE_EXTENSION}`
+      `${examId}${OFFLINE_EXAM_CONFIG.EXAM_FILE_EXTENSION}`
     );
     await fs.writeFile(filePath, JSON.stringify(data, null, 2));
 
-    console.log(`Exam data saved for exam ${examCode}`);
+    console.log(`Exam data saved for exam ${examId}`);
     return true;
   } catch (error) {
     console.error('Failed to save exam data:', error);
@@ -46,13 +46,13 @@ ipcMain.handle('save-exam-data', async (_, examCode: string, data: object) => {
 });
 
 // Load exam data from local storage
-ipcMain.handle('load-exam-data', async (_, examCode: string) => {
+ipcMain.handle('load-exam-data', async (_, examId: string) => {
   try {
     const userDataPath = app.getPath('userData');
     const examsDir = join(userDataPath, OFFLINE_EXAM_CONFIG.EXAMS_DIRECTORY);
     const filePath = join(
       examsDir,
-      `${examCode}${OFFLINE_EXAM_CONFIG.EXAM_FILE_EXTENSION}`
+      `${examId}${OFFLINE_EXAM_CONFIG.EXAM_FILE_EXTENSION}`
     );
 
     const data = await fs.readFile(filePath, 'utf-8');
@@ -125,9 +125,9 @@ ipcMain.handle('clear-all-exam-data', async () => {
 // Decrypt exam data using embedded license and keys
 ipcMain.handle(
   'decrypt-exam-data',
-  async (_, examCode: string, userId?: string) => {
+  async (_, examId: string, userId?: string) => {
     console.log(
-      `Decrypting exam data for exam code: ${examCode}, userId: ${userId}`
+      `Decrypting exam data for exam id: ${examId}, userId: ${userId}`
     );
     try {
       const { ElectronCrypto } = await import('../lib/crypto');
@@ -137,7 +137,7 @@ ipcMain.handle(
       const examsDir = join(userDataPath, OFFLINE_EXAM_CONFIG.EXAMS_DIRECTORY);
       const filePath = join(
         examsDir,
-        `${examCode}${OFFLINE_EXAM_CONFIG.EXAM_FILE_EXTENSION}`
+        `${examId}${OFFLINE_EXAM_CONFIG.EXAM_FILE_EXTENSION}`
       );
 
       const rawData = await fs.readFile(filePath, 'utf-8');
@@ -153,14 +153,14 @@ ipcMain.handle(
         throw new Error('Failed to decrypt exam data');
       }
 
-      console.log(`Successfully decrypted exam data for: ${examCode}`);
+      console.log(`Successfully decrypted exam data for: ${examId}`);
       return decryptedExamData;
     } catch (error) {
       console.error('Failed to decrypt exam data:', error);
 
       // Return more specific error messages
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        throw new Error(`Exam data not found for exam code: ${examCode}`);
+        throw new Error(`Exam data not found for exam id: ${examId}`);
       }
 
       if (error instanceof Error) {

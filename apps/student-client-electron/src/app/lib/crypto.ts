@@ -29,6 +29,7 @@ export interface DecryptedExamData {
 
 // Downloaded exam response interface
 export interface DownloadExamResponse {
+  examId: string;
   examCode: string;
   encryptedExamData: string;
   signedLicense: string;
@@ -58,11 +59,8 @@ export class ElectronCrypto {
         path.join(process.resourcesPath, 'keys', 'public.pem'),
       ];
 
-      console.log('Looking for public key, __dirname is:', __dirname);
-
       for (const keyPath of possiblePaths) {
         if (fs.existsSync(keyPath)) {
-          console.log('Found public key at:', keyPath);
           return fs.readFileSync(keyPath, 'utf8');
         }
       }
@@ -92,11 +90,8 @@ export class ElectronCrypto {
         path.join(process.resourcesPath, 'keys', 'license.key'),
       ];
 
-      console.log('Looking for license key...');
-
       for (const keyPath of possiblePaths) {
         if (fs.existsSync(keyPath)) {
-          console.log('Found license key at:', keyPath);
           return fs.readFileSync(keyPath, 'utf8').trim();
         }
       }
@@ -125,74 +120,13 @@ export class ElectronCrypto {
     publicKey: string
   ): boolean {
     try {
-      console.log('🔐 Starting signature verification...');
-      console.log(
-        'Encrypted license (base64) length:',
-        encryptedLicenseBase64.length
-      );
-      console.log('Signature length:', signature.length);
-      console.log('Public key length:', publicKey.length);
-
-      // Log samples for debugging
-      console.log(
-        'Encrypted license (first 50 chars):',
-        encryptedLicenseBase64.substring(0, 50)
-      );
-      console.log('Signature (first 50 chars):', signature.substring(0, 50));
-
-      // Test signature validity format
-      try {
-        Buffer.from(signature, 'base64');
-        console.log('✅ Signature is valid base64');
-      } catch (base64Error) {
-        console.error('❌ Signature is not valid base64:', base64Error.message);
-        return false;
-      }
-
-      // Test encrypted license base64 validity
-      try {
-        Buffer.from(encryptedLicenseBase64, 'base64');
-        console.log('✅ Encrypted license is valid base64');
-      } catch (base64Error) {
-        console.error(
-          '❌ Encrypted license is not valid base64:',
-          base64Error.message
-        );
-        return false;
-      }
-
-      // Verify signature using the same approach as test-signature.js
+      // Verify signature
       // The signature was created on the base64-encoded encrypted license
       const verifier = crypto.createVerify(this.HASH_ALGORITHM);
       verifier.update(encryptedLicenseBase64);
       verifier.end();
 
-      console.log('🔍 Attempting signature verification with createVerify...');
       const isValid = verifier.verify(publicKey, signature, 'base64');
-      console.log(
-        'Signature verification result:',
-        isValid ? '✅ VALID' : '❌ INVALID'
-      );
-
-      if (!isValid) {
-        console.warn('❌ License signature verification failed');
-
-        // Additional debugging info
-        console.log('🔍 Debug info:');
-        console.log('- Hash algorithm:', this.HASH_ALGORITHM);
-        console.log(
-          '- Public key preview:',
-          publicKey.substring(0, 100) + '...'
-        );
-        console.log('- Signature preview:', signature.substring(0, 50) + '...');
-        console.log(
-          '- Data being verified preview:',
-          encryptedLicenseBase64.substring(0, 50) + '...'
-        );
-      } else {
-        console.log('✅ License signature verification succeeded');
-      }
-
       return isValid;
     } catch (error) {
       console.error('Failed to verify license signature:', error.message);
@@ -212,35 +146,18 @@ export class ElectronCrypto {
     licenseEncryptionKey: string
   ): LicenseData | null {
     try {
-      console.log('🔓 Starting license decryption...');
-      console.log(
-        'Encrypted license (base64) length:',
-        encryptedLicenseBase64.length
-      );
-      console.log('License key length:', licenseEncryptionKey.length);
-
       // First decode the base64 to get the iv:encrypted:authTag format
       const ivEncryptedAuth = Buffer.from(
         encryptedLicenseBase64,
         'base64'
       ).toString('utf8');
-      console.log(
-        'Decoded iv:encrypted:authTag format:',
-        ivEncryptedAuth.substring(0, 100) + '...'
-      );
 
       const parts = ivEncryptedAuth.split(':');
       if (parts.length !== 3) {
-        throw new Error(
-          `Invalid encrypted license format - expected 3 parts (iv:encrypted:authTag), got ${parts.length}`
-        );
+        throw new Error(`Invalid encrypted license format`);
       }
 
       const [ivHex, encrypted, authTagHex] = parts;
-      console.log('IV (hex) length:', ivHex.length);
-      console.log('Encrypted data length:', encrypted.length);
-      console.log('Auth tag (hex) length:', authTagHex.length);
-
       // Validate hex strings before conversion
       const hexPattern = /^[0-9a-fA-F]+$/;
       if (
@@ -258,12 +175,8 @@ export class ElectronCrypto {
 
       // Validate buffer lengths (GCM uses 12-byte IV, 16-byte auth tag)
       if (iv.length !== 12 || key.length !== 32 || authTag.length !== 16) {
-        throw new Error(
-          `Invalid key, IV, or auth tag length - IV: ${iv.length}, Key: ${key.length}, Auth tag: ${authTag.length}`
-        );
+        throw new Error(`Invalid key format`);
       }
-
-      console.log('✅ IV, key, and auth tag lengths are valid');
 
       // Decrypt using GCM with proper auth tag
       const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
@@ -272,11 +185,7 @@ export class ElectronCrypto {
       let decrypted = decipher.update(encrypted, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
 
-      console.log('✅ GCM decryption successful with auth tag');
       const parsedLicense = JSON.parse(decrypted) as LicenseData;
-      console.log('✅ License JSON parsing successful');
-      console.log('License exam ID:', parsedLicense.examId);
-      console.log('License exam title:', parsedLicense.examTitle);
       return parsedLicense;
     } catch (error) {
       console.error('Failed to decrypt license file:', error.message);
@@ -367,13 +276,6 @@ export class ElectronCrypto {
     signature: string;
   } | null {
     try {
-      console.log('🔍 Parsing signed license...');
-      console.log('Signed license length:', signedLicense.length);
-      console.log(
-        'Signed license (first 100 chars):',
-        signedLicense.substring(0, 100)
-      );
-
       // Split on the last colon to separate base64 encrypted license from signature
       // This handles base64 strings that might contain colons
       const lastColonIndex = signedLicense.lastIndexOf(':');
@@ -385,17 +287,6 @@ export class ElectronCrypto {
 
       const encryptedLicenseBase64 = signedLicense.substring(0, lastColonIndex);
       const signature = signedLicense.substring(lastColonIndex + 1);
-
-      console.log(
-        '📝 Encrypted license (base64) length:',
-        encryptedLicenseBase64.length
-      );
-      console.log('📝 Signature length:', signature.length);
-      console.log(
-        '📝 Encrypted license (first 50 chars):',
-        encryptedLicenseBase64.substring(0, 50)
-      );
-      console.log('📝 Signature (first 50 chars):', signature.substring(0, 50));
 
       if (!encryptedLicenseBase64 || !signature) {
         throw new Error('Invalid signed license format - missing components');
@@ -412,27 +303,6 @@ export class ElectronCrypto {
   }
 
   /**
-   * Test signature verification with sample data (for debugging)
-   */
-  static testSignatureVerification(): boolean {
-    try {
-      const testData = 'test message for signature verification';
-      const publicKey = this.getPublicKey();
-
-      console.log('Testing signature verification with sample data...');
-      console.log('Test data:', testData);
-      console.log('Public key length:', publicKey.length);
-
-      // We can't create a signature here since we don't have the private key,
-      // but we can test the verification setup
-      return true;
-    } catch (error) {
-      console.error('Signature verification test failed:', error);
-      return false;
-    }
-  }
-
-  /**
    * Complete license verification and exam data decryption process
    * @param downloadedData - The downloaded exam response
    * @param userId - Optional user ID for validation
@@ -444,8 +314,8 @@ export class ElectronCrypto {
   ): DecryptedExamData | null {
     try {
       console.log(
-        'Processing offline exam for examCode:',
-        downloadedData.examCode
+        'Processing offline exam for exam id:',
+        downloadedData.examId
       );
 
       // Get embedded keys
@@ -473,8 +343,6 @@ export class ElectronCrypto {
         return null;
       }
 
-      console.log('✅ License signature verification succeeded');
-
       // 3. Decrypt license
       const license = this.decryptLicenseFile(
         licenseComponents.encryptedLicense,
@@ -484,11 +352,6 @@ export class ElectronCrypto {
         console.error('Failed to decrypt license');
         return null;
       }
-
-      console.log(
-        '✅ Successfully decrypted license for exam:',
-        license.examTitle
-      );
 
       // 4. Validate license timing and user
       if (!this.validateLicense(license, userId)) {
@@ -506,10 +369,6 @@ export class ElectronCrypto {
         return null;
       }
 
-      console.log(
-        '✅ Successfully decrypted complete exam data for:',
-        examData.title
-      );
       return examData;
     } catch (error) {
       console.error('Failed to process offline exam:', error);
@@ -529,224 +388,5 @@ export class ElectronCrypto {
       publicKey: this.getPublicKey(),
       licenseEncryptionKey: this.getLicenseEncryptionKey(),
     };
-  }
-
-  /**
-   * Create mock exam data for testing purposes
-   * @param examCode - The exam code
-   * @returns Mock decrypted exam data
-   */
-  private static createMockExamData(examCode: string): DecryptedExamData {
-    console.log('Creating mock exam data for testing purposes');
-    return {
-      id: `mock-exam-${examCode}`,
-      title: `Mock Exam: ${examCode}`,
-      description:
-        'This is a mock exam created for testing the offline decryption system',
-      startDate: new Date(Date.now() - 60000).toISOString(), // Started 1 minute ago
-      endDate: new Date(Date.now() + 3600000).toISOString(), // Ends in 1 hour
-      examCode: examCode,
-      teacherName: 'Test Teacher',
-      questions: [
-        {
-          id: 1,
-          type: 'multiple-choice-single',
-          question: 'What is the result of 2 + 2?',
-          options: ['3', '4', '5', '6'],
-          correctAnswer: 1,
-          points: 5,
-        },
-        {
-          id: 2,
-          type: 'multiple-choice-single',
-          question: 'Which programming language is this system built with?',
-          options: ['Python', 'TypeScript', 'Java', 'C++'],
-          correctAnswer: 1,
-          points: 5,
-        },
-        {
-          id: 3,
-          type: 'text',
-          question: 'Explain the purpose of offline exam functionality.',
-          points: 10,
-        },
-      ],
-    };
-  }
-
-  /**
-   * Debug function to test crypto functionality with known data
-   * This helps verify that our keys and algorithms are working correctly
-   */
-  static debugCryptoFunctionality(): boolean {
-    try {
-      console.log('🔧 Starting crypto functionality debug...');
-
-      // Get our keys
-      const licenseEncryptionKey = this.getLicenseEncryptionKey();
-      console.log(
-        'License encryption key (first 16 chars):',
-        licenseEncryptionKey.substring(0, 16) + '...'
-      );
-
-      // Test encryption/decryption with a simple JSON object
-      const testLicense: LicenseData = {
-        examId: 'debug-test-exam',
-        examEncryptionKey:
-          '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-        examCode: 'DEBUG123',
-        examTitle: 'Debug Test Exam',
-        startDate: new Date().toISOString(),
-        endDate: new Date(Date.now() + 3600000).toISOString(),
-        issuedAt: new Date().toISOString(),
-        userId: 'debug-user-id',
-      };
-
-      const testLicenseJson = JSON.stringify(testLicense);
-      console.log('Test license JSON length:', testLicenseJson.length);
-      console.log('Test license JSON:', testLicenseJson);
-
-      // Manually encrypt the test license using the same algorithm as backend
-      const iv = crypto.randomBytes(12); // GCM uses 12 bytes for IV
-      const key = Buffer.from(licenseEncryptionKey, 'hex');
-      const cipher = crypto.createCipheriv(this.AES_ALGORITHM, key, iv);
-
-      let encrypted = cipher.update(testLicenseJson, 'utf8', 'hex');
-      encrypted += cipher.final('hex');
-
-      // Get the authentication tag for GCM mode
-      const authTag = cipher.getAuthTag();
-
-      const encryptedLicense = `${iv.toString(
-        'hex'
-      )}:${encrypted}:${authTag.toString('hex')}`;
-      console.log('Test encrypted license:', encryptedLicense);
-
-      // Now try to decrypt it using our function
-      const decryptedLicense = this.decryptLicenseFile(
-        encryptedLicense,
-        licenseEncryptionKey
-      );
-
-      if (decryptedLicense) {
-        console.log(
-          '✅ Crypto test passed - encryption/decryption working correctly'
-        );
-        console.log(
-          'Decrypted license exam title:',
-          decryptedLicense.examTitle
-        );
-        return true;
-      } else {
-        console.log('❌ Crypto test failed - decryption returned null');
-        return false;
-      }
-    } catch (error) {
-      console.error('❌ Crypto debug failed:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Debug function to analyze the structure of the real encrypted license
-   */
-  static analyzeEncryptedLicense(encryptedLicense: string): void {
-    try {
-      console.log('🔍 Analyzing encrypted license structure...');
-
-      const [ivHex, encrypted] = encryptedLicense.split(':');
-      console.log('IV (hex):', ivHex);
-      console.log(
-        'IV length:',
-        ivHex.length,
-        'chars =',
-        ivHex.length / 2,
-        'bytes'
-      );
-      console.log(
-        'Encrypted data length:',
-        encrypted.length,
-        'chars =',
-        encrypted.length / 2,
-        'bytes'
-      );
-
-      // Check if encrypted data length is valid for AES-256-CBC
-      const encryptedBytes = encrypted.length / 2;
-      console.log(
-        'Encrypted data is multiple of 16 bytes:',
-        encryptedBytes % 16 === 0
-      );
-      console.log('Number of AES blocks:', Math.floor(encryptedBytes / 16));
-
-      // Analyze hex patterns
-      const hexPattern = /^[0-9a-fA-F]+$/;
-      console.log('IV is valid hex:', hexPattern.test(ivHex));
-      console.log('Encrypted data is valid hex:', hexPattern.test(encrypted));
-
-      // Try to identify any patterns or issues
-      const firstBlock = encrypted.substring(0, 32);
-      const lastBlock = encrypted.substring(encrypted.length - 32);
-      console.log('First block (hex):', firstBlock);
-      console.log('Last block (hex):', lastBlock);
-    } catch (error) {
-      console.error('Failed to analyze encrypted license:', error);
-    }
-  }
-
-  /**
-   * Test decryption with multiple possible license keys
-   * This helps identify which key was actually used to encrypt the data
-   */
-  static testMultipleLicenseKeys(encryptedLicense: string): {
-    key: string;
-    result: LicenseData | null;
-    source: string;
-  }[] {
-    const possibleKeys = [
-      {
-        key: 'af62fd6f18ddd0eab83459944180bb01b168f29bd818a1269803a0440bad746d',
-        source: 'backend/electron embedded key',
-      },
-      {
-        key: '5090c557f55c87f16fa12a76019ce1cda4f7608ec3fb355bdb296120c30c0821',
-        source: 'root workspace key',
-      },
-    ];
-
-    const results = [];
-
-    for (const { key, source } of possibleKeys) {
-      console.log(`🔑 Testing license key from ${source}...`);
-      console.log(`🔑 Key: ${key.substring(0, 16)}...`);
-
-      try {
-        const result = this.decryptLicenseFile(encryptedLicense, key);
-        console.log(
-          `🔑 Result for ${source}:`,
-          result ? '✅ SUCCESS' : '❌ FAILED'
-        );
-
-        results.push({
-          key: key,
-          result: result,
-          source: source,
-        });
-
-        if (result) {
-          console.log(`🎉 SUCCESS! License encrypted with ${source}`);
-          console.log(`🎉 Exam: ${result.examTitle}`);
-        }
-      } catch (error) {
-        console.log(`🔑 Error testing ${source}:`, error.message);
-        results.push({
-          key: key,
-          result: null,
-          source: source,
-        });
-      }
-    }
-
-    return results;
   }
 }

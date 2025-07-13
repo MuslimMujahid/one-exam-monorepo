@@ -48,6 +48,7 @@ export interface ExamData {
 }
 
 export interface DownloadExamResponse {
+  examId: string;
   examCode: string;
   encryptedExamData: string;
   signedLicense: string;

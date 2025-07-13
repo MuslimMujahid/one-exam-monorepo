@@ -140,11 +140,9 @@ export function DashboardPage() {
     const exam = exams.find((e) => e.id === examId);
     if (exam) {
       // Use examCode for offline exam access
-      navigate(`/exam/${exam.examCode}`);
+      navigate(`/exam/${examId}`);
     } else {
       console.error('Exam not found for ID:', examId);
-      // Fallback to using examId directly (for backward compatibility)
-      navigate(`/exam/${examId}`);
     }
   };
 

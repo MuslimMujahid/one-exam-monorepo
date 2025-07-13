@@ -88,15 +88,15 @@ export function useDownloadedExams(exams: Exam[]) {
 
       for (const exam of exams) {
         try {
-          downloadedStatus[exam.examCode] = await ExamService.isExamDownloaded(
-            exam.examCode
+          downloadedStatus[exam.id] = await ExamService.isExamDownloaded(
+            exam.id
           );
         } catch (error) {
           console.error(
-            `Failed to check download status for exam ${exam.examCode}:`,
+            `Failed to check download status for exam ${exam.id}:`,
             error
           );
-          downloadedStatus[exam.examCode] = false;
+          downloadedStatus[exam.id] = false;
         }
       }
 

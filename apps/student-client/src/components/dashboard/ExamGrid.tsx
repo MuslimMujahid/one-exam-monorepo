@@ -50,8 +50,8 @@ export function ExamGrid({
             exam={exam}
             status={status}
             canTakeExam={canTake}
-            isDownloaded={downloadedExams[exam.examCode] || false}
-            isDownloading={downloadingExams.has(exam.examCode)}
+            isDownloaded={downloadedExams[exam.id] || false}
+            isDownloading={downloadingExams.has(exam.id)}
             timeUntilStart={
               status.text === 'Scheduled'
                 ? getFormattedTimeUntilStart(exam)

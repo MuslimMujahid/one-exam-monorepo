@@ -139,6 +139,7 @@ export class ExamSessionService {
     );
 
     return {
+      examId: exam.id,
       examCode: exam.examCode,
       encryptedExamData,
       signedLicense,

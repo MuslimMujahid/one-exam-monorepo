@@ -141,7 +141,7 @@ export class ExamService {
     // Save to local storage if running in electron
     if (window.electron && window.electron.saveExamData) {
       try {
-        await window.electron.saveExamData(examCode, downloadData);
+        await window.electron.saveExamData(downloadData.examId, downloadData);
       } catch (error) {
         console.error('Failed to save exam data locally:', error);
         throw new Error('Failed to save exam data for offline access');
@@ -154,10 +154,10 @@ export class ExamService {
   /**
    * Check if an exam is already downloaded locally
    */
-  static async isExamDownloaded(examCode: string): Promise<boolean> {
+  static async isExamDownloaded(examId: string): Promise<boolean> {
     if (window.electron && window.electron.loadExamData) {
       try {
-        const data = await window.electron.loadExamData(examCode);
+        const data = await window.electron.loadExamData(examId);
         return data !== null;
       } catch (error) {
         console.error('Failed to check downloaded exam:', error);
