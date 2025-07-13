@@ -1,0 +1,298 @@
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useExamData } from './useExamData';
+import { useExamState } from './useExamState';
+import { useExamSession } from './useExamSession';
+import { useExamTimer } from './useExamTimer';
+import { useDebugPanel, useKeyboardShortcuts } from './useDebugPanel';
+
+interface UseExamPageOptions {
+  examId: string;
+}
+
+export function useExamPage({ examId }: UseExamPageOptions) {
+  const { user } = useAuth();
+
+  // Dialog states
+  const [showFinalSubmitDialog, setShowFinalSubmitDialog] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+
+  // Track if we're in the middle of session restoration
+  const [isRestoringSession, setIsRestoringSession] = useState(false);
+
+  // Load exam data
+  const { examData, isLoading, error, isElectronAvailable } = useExamData({
+    examId,
+    userId: user?.id,
+  });
+
+  // Exam state management
+  const examState = useExamState({
+    examData,
+  });
+
+  // Ref to avoid circular dependency
+  const handleFinalSubmitRef = useRef<() => Promise<void>>();
+
+  // Timer management - use ref callback to avoid circular dependency
+  const timer = useExamTimer({
+    initialTime: 0,
+    onTimeExpired: () => handleFinalSubmitRef.current?.(),
+    isActive:
+      examState.examStarted && !examState.examSubmitted && !isRestoringSession,
+  });
+
+  // Session management
+  const session = useExamSession({
+    examId: examData?.id || examId,
+    studentId: user?.id || '',
+    isElectronAvailable,
+    onSessionRestored: (sessionData) => {
+      setIsRestoringSession(true);
+
+      examState.restoreFromSession({
+        currentQuestionIndex: sessionData.currentQuestionIndex,
+        answers: sessionData.answers,
+        examStarted: sessionData.examStarted,
+        examSubmitted: sessionData.examSubmitted,
+      });
+
+      // Restore timer state to prevent auto-submit on reload
+      if (sessionData.timeRemaining > 0) {
+        timer.setTimeRemaining(sessionData.timeRemaining);
+      }
+
+      // Session restoration complete
+      setIsRestoringSession(false);
+    },
+  });
+
+  // Initialize session when exam data is loaded
+  useEffect(() => {
+    if (
+      examData &&
+      user?.id &&
+      isElectronAvailable &&
+      !session.currentSession
+    ) {
+      session.initializeSession();
+    }
+  }, [examData, user?.id, isElectronAvailable, session]);
+
+  // Initialize timer when exam starts (but not during session restoration)
+  useEffect(() => {
+    if (
+      examData &&
+      examState.examStarted &&
+      !examState.examSubmitted &&
+      timer.timeRemaining === 0 &&
+      !isRestoringSession
+    ) {
+      timer.setInitialTime(examData.timeLimit * 60);
+    }
+  }, [
+    examData,
+    examState.examStarted,
+    examState.examSubmitted,
+    timer,
+    isRestoringSession,
+  ]);
+
+  // Debug panel
+  const debug = useDebugPanel();
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    if (!session.currentSession?.autoSaveEnabled || examState.examSubmitted) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      session.autoSaveSession({
+        currentQuestionIndex: examState.currentQuestionIndex,
+        timeRemaining: timer.timeRemaining,
+        answers: examState.answers,
+        examStarted: examState.examStarted,
+        examSubmitted: examState.examSubmitted,
+      });
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [session, examState, timer.timeRemaining]);
+
+  // Save answers (without ending the session)
+  const handleSaveAnswers = useCallback(async () => {
+    if (!examData || !user?.id || !isElectronAvailable) {
+      console.error('Missing required data for saving answers');
+      return;
+    }
+
+    try {
+      console.log('Saving answers locally...');
+
+      const result = await session.saveAnswers(
+        examState.answers,
+        session.currentSession?.sessionId
+      );
+
+      console.log('Answers saved successfully with ID:', result.submissionId);
+
+      // Show save confirmation
+      setShowSaveConfirmation(true);
+      setTimeout(() => setShowSaveConfirmation(false), 3000);
+    } catch (error) {
+      console.error('Failed to save answers:', error);
+    }
+  }, [examData, user?.id, isElectronAvailable, examState.answers, session]);
+
+  // Final submit exam (ends the session)
+  const handleFinalSubmitExam = useCallback(async () => {
+    if (!examData || !user?.id || !isElectronAvailable) {
+      console.error('Missing required data for final submission');
+      return;
+    }
+
+    try {
+      console.log('Saving final submission locally...');
+
+      const result = await session.saveAnswers(
+        examState.answers,
+        session.currentSession?.sessionId
+      );
+
+      console.log(
+        'Final submission saved successfully with ID:',
+        result.submissionId
+      );
+
+      // Mark exam as submitted
+      examState.submitExam();
+
+      // Clear the session since exam is completed
+      await session.clearCurrentSession();
+    } catch (error) {
+      console.error('Failed to submit exam:', error);
+      // Still mark as submitted to prevent data loss
+      examState.submitExam();
+
+      // Try to clear session even if submission failed
+      try {
+        await session.clearCurrentSession();
+      } catch (sessionError) {
+        console.error(
+          'Failed to clear session after submission error:',
+          sessionError
+        );
+      }
+    }
+  }, [examData, user?.id, isElectronAvailable, examState, session]);
+
+  // Assign to ref for timer callback
+  handleFinalSubmitRef.current = handleFinalSubmitExam;
+
+  // Start exam
+  const handleStartExam = useCallback(async () => {
+    if (examData) {
+      examState.startExam();
+      const timeLimit = examData.timeLimit * 60;
+      timer.setInitialTime(timeLimit);
+
+      // Update session with start information
+      if (session.currentSession) {
+        try {
+          await session.autoSaveSession({
+            examStarted: true,
+            timeRemaining: timeLimit,
+          });
+        } catch (error) {
+          console.error('Failed to update session on exam start:', error);
+        }
+      }
+    }
+  }, [examData, examState, timer, session]);
+
+  // Dialog handlers
+  const handleFinalSubmitClick = useCallback(() => {
+    setShowFinalSubmitDialog(true);
+  }, []);
+
+  const confirmFinalSubmit = useCallback(async () => {
+    setShowFinalSubmitDialog(false);
+    await handleFinalSubmitRef.current?.();
+  }, []);
+
+  const cancelFinalSubmit = useCallback(() => {
+    setShowFinalSubmitDialog(false);
+  }, []);
+
+  // Manual session save for debugging
+  const handleManualSessionSave = useCallback(async () => {
+    console.log('Manual session save triggered');
+    await session.autoSaveSession({
+      currentQuestionIndex: examState.currentQuestionIndex,
+      timeRemaining: timer.timeRemaining,
+      answers: examState.answers,
+      examStarted: examState.examStarted,
+      examSubmitted: examState.examSubmitted,
+    });
+  }, [session, examState, timer]);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onManualSave: handleManualSessionSave,
+    onToggleDebug: debug.toggleDebugPanel,
+    isExamActive: examState.examStarted && !examState.examSubmitted,
+  });
+
+  return {
+    // Data
+    examData,
+    isLoading,
+    error,
+    isElectronAvailable,
+    user,
+
+    // Exam state
+    ...examState,
+
+    // Timer
+    timeRemaining: timer.timeRemaining,
+    formatTime: timer.formatTime,
+
+    // Session
+    currentSession: session.currentSession,
+    isResumingSession: session.isResumingSession,
+    lastSaveTime: session.lastSaveTime,
+
+    // Actions
+    handleStartExam,
+    handleSaveAnswers,
+    handleFinalSubmitClick,
+    confirmFinalSubmit,
+    cancelFinalSubmit,
+    handleManualSessionSave,
+
+    // Dialog states
+    showFinalSubmitDialog,
+    setShowFinalSubmitDialog,
+    showSaveConfirmation,
+    setShowSaveConfirmation,
+
+    // Debug
+    showDebugPanel: debug.showDebugPanel,
+    toggleDebugPanel: debug.toggleDebugPanel,
+    hideDebugPanel: debug.hideDebugPanel,
+
+    // Debug info
+    debugInfo: {
+      sessionId: session.currentSession?.sessionId,
+      examStarted: examState.examStarted,
+      currentQuestionIndex: examState.currentQuestionIndex,
+      totalQuestions: examState.totalQuestions,
+      answersCount: examState.answeredCount,
+      timeRemaining: timer.timeRemaining,
+      lastSaveTime: session.lastSaveTime,
+      autoSaveEnabled: session.currentSession?.autoSaveEnabled || false,
+    },
+  };
+}
