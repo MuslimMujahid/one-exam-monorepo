@@ -1,3 +1,3 @@
 @import "tailwindcss" source("../src");
 @import "../../../shared/tailwind-presets/shadcn.css";
-@source "../../../shared/ui/src/";
+@source "../../../shared/ui/src";
