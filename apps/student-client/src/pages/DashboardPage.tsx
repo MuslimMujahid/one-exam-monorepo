@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { SessionSaveData } from '../types';
 import {
   useStudentExams,
   useJoinExam,
@@ -8,6 +9,7 @@ import {
   useDownloadedExams,
 } from '../hooks/useExams';
 import { useExamUtils } from '../hooks/useExamUtils';
+import { useExamSessions } from '../hooks/useExamSessions';
 import {
   DashboardHeader,
   ExamStatsGrid,
@@ -41,6 +43,18 @@ export function DashboardPage() {
     getFormattedTimeUntilStart,
     getFormattedTimeUntilEnd,
   } = useExamUtils();
+
+  // Get exam sessions for the current user
+  const { getActiveSessionForExam } = useExamSessions(user?.id);
+
+  // Create a map of exam sessions for quick lookup
+  const examSessions = useMemo(() => {
+    const sessionsMap: Record<string, SessionSaveData | null> = {};
+    exams.forEach((exam) => {
+      sessionsMap[exam.id] = getActiveSessionForExam(exam.id);
+    });
+    return sessionsMap;
+  }, [exams, getActiveSessionForExam]);
 
   // Join exam modal state
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -192,6 +206,7 @@ export function DashboardPage() {
               exams={exams}
               downloadedExams={downloadedExams}
               downloadingExams={downloadingExams}
+              examSessions={examSessions}
               getExamStatus={getExamStatus}
               canTakeExam={canTakeExam}
               getFormattedTimeUntilStart={getFormattedTimeUntilStart}

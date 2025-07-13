@@ -1,11 +1,13 @@
 import React from 'react';
 import { ExamCard } from './ExamCard';
 import { Exam, ExamStatus } from '../../types/exam';
+import { SessionSaveData } from '../../types';
 
 interface ExamGridProps {
   exams: Exam[];
   downloadedExams: Record<string, boolean>;
   downloadingExams: Set<string>;
+  examSessions: Record<string, SessionSaveData | null>;
   getExamStatus: (exam: Exam) => ExamStatus;
   canTakeExam: (exam: Exam) => boolean;
   getFormattedTimeUntilStart: (exam: Exam) => string;
@@ -18,6 +20,7 @@ export function ExamGrid({
   exams,
   downloadedExams,
   downloadingExams,
+  examSessions,
   getExamStatus,
   canTakeExam,
   getFormattedTimeUntilStart,
@@ -52,6 +55,7 @@ export function ExamGrid({
             canTakeExam={canTake}
             isDownloaded={downloadedExams[exam.id] || false}
             isDownloading={downloadingExams.has(exam.id)}
+            activeSession={examSessions[exam.id] || null}
             timeUntilStart={
               status.text === 'Scheduled'
                 ? getFormattedTimeUntilStart(exam)

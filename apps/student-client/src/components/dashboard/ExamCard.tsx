@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@one-exam-monorepo/ui';
 import { Exam, ExamStatus } from '../../types/exam';
+import { SessionSaveData } from '../../types';
 
 interface ExamCardProps {
   exam: Exam;
@@ -10,6 +11,7 @@ interface ExamCardProps {
   isDownloading: boolean;
   timeUntilStart?: string;
   timeUntilEnd?: string;
+  activeSession?: SessionSaveData | null;
   onDownload: (examCode: string) => void;
   onTakeExam: (examId: string) => void;
 }
@@ -22,6 +24,7 @@ export function ExamCard({
   isDownloading,
   timeUntilStart,
   timeUntilEnd,
+  activeSession,
   onDownload,
   onTakeExam,
 }: ExamCardProps) {
@@ -80,6 +83,14 @@ export function ExamCard({
                 Downloaded
               </span>
             )}
+            {activeSession && (
+              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                <span role="img" aria-label="Clock">
+                  ⏰
+                </span>{' '}
+                In Progress
+              </span>
+            )}
           </div>
         </div>
 
@@ -104,10 +115,14 @@ export function ExamCard({
           )}
           {canTakeExam && isDownloaded ? (
             <Button
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              className={`w-full text-white ${
+                activeSession
+                  ? 'bg-orange-600 hover:bg-orange-700'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
               onClick={() => onTakeExam(exam.id)}
             >
-              Take Exam
+              {activeSession ? 'Resume Exam' : 'Take Exam'}
             </Button>
           ) : (
             <Button
