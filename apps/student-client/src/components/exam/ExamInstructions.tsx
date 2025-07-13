@@ -49,7 +49,8 @@ export function ExamInstructions({
                   • <strong>Questions:</strong> {examData.questions.length}
                 </li>
                 <li>
-                  • <strong>Time Limit:</strong> {examData.timeLimit} minutes
+                  • <strong>Time Limit Left:</strong> {examData.timeLimit}{' '}
+                  minutes
                 </li>
                 <li>
                   • <strong>Total Points:</strong>{' '}
@@ -66,7 +67,6 @@ export function ExamInstructions({
                 <li>• Save your answers frequently</li>
                 <li>• You can navigate between questions</li>
                 <li>• Exam will auto-submit when time expires</li>
-                <li>• Ensure stable internet connection</li>
               </ul>
             </div>
           </div>
