@@ -40,6 +40,10 @@ export function ExamPage() {
   const [showFinalSubmitDialog, setShowFinalSubmitDialog] = useState(false);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
+  // Debug state
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
+
   // Auto-save session periodically
   const autoSaveSession = useCallback(async () => {
     if (!currentSession || !window.electron || !isElectronAvailable) {
@@ -57,11 +61,20 @@ export function ExamPage() {
         lastActivity: new Date().toISOString(),
       };
 
+      console.log(
+        'Auto-saving session with answers:',
+        Object.keys(answers).length,
+        'questions answered'
+      );
+
       await window.electron.updateExamSession(
         currentSession.sessionId,
         updatedSession
       );
       setCurrentSession(updatedSession);
+      setLastSaveTime(new Date().toLocaleTimeString());
+
+      console.log('Session auto-saved successfully');
     } catch (error) {
       console.error('Failed to auto-save session:', error);
     }
@@ -75,7 +88,7 @@ export function ExamPage() {
     isElectronAvailable,
   ]);
 
-  // Auto-save every 30 seconds
+  // Auto-save every 30 seconds for background session maintenance
   useEffect(() => {
     if (!currentSession?.autoSaveEnabled || examSubmitted) {
       return;
@@ -106,6 +119,12 @@ export function ExamPage() {
             'Found existing session, resuming...',
             examSession.sessionId
           );
+          console.log(
+            'Restoring answers:',
+            Object.keys(examSession.answers).length,
+            'questions'
+          );
+          console.log('Session answers:', examSession.answers);
           setIsResumingSession(true);
 
           // Restore session state
@@ -116,6 +135,7 @@ export function ExamPage() {
           setExamSubmitted(examSession.examSubmitted);
 
           setCurrentSession(examSession);
+          console.log('Session state restored successfully');
           return examSession;
         } else {
           // Create new session
@@ -225,6 +245,9 @@ export function ExamPage() {
     try {
       console.log('Saving answers locally...');
 
+      // First, update the session with current state
+      await autoSaveSession();
+
       // Save answers with encryption in one step, organized by session
       const result = await window.electron.saveSubmissionLocally(
         examData.id,
@@ -249,6 +272,7 @@ export function ExamPage() {
     isElectronAvailable,
     answers,
     currentSession?.sessionId,
+    autoSaveSession,
   ]);
 
   // Final submit exam (ends the session)
@@ -260,6 +284,9 @@ export function ExamPage() {
 
     try {
       console.log('Saving final submission locally...');
+
+      // First, update the session with current state before final submission
+      await autoSaveSession();
 
       // Save final answers with encryption in one step, organized by session
       const result = await window.electron.saveSubmissionLocally(
@@ -305,6 +332,7 @@ export function ExamPage() {
     answers,
     currentSession?.sessionId,
     clearCurrentSession,
+    autoSaveSession,
   ]);
 
   // Show confirmation dialog for final submit
@@ -407,6 +435,30 @@ export function ExamPage() {
   const handleBackToDashboard = () => {
     navigate('/dashboard');
   };
+
+  // Manual session save for debugging
+  const handleManualSessionSave = useCallback(async () => {
+    console.log('Manual session save triggered');
+    await autoSaveSession();
+  }, [autoSaveSession]);
+
+  // Add keyboard shortcuts for debugging
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.key === 's' && examStarted && !examSubmitted) {
+        event.preventDefault();
+        handleManualSessionSave();
+      }
+      // Toggle debug panel with Ctrl+D
+      if (event.ctrlKey && event.key === 'd') {
+        event.preventDefault();
+        setShowDebugPanel((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleManualSessionSave, examStarted, examSubmitted]);
 
   // Render different states
   if (isLoading) {
@@ -533,6 +585,55 @@ export function ExamPage() {
           </div>
         </div>
       </div>
+
+      {/* Debug Panel */}
+      {showDebugPanel && (
+        <div className="fixed top-4 left-4 bg-black bg-opacity-80 text-white p-4 rounded-lg z-50 max-w-md">
+          <h3 className="text-lg font-semibold mb-2">Debug Panel</h3>
+          <div className="space-y-1 text-sm">
+            <p>
+              <strong>Session ID:</strong> {currentSession?.sessionId}
+            </p>
+            <p>
+              <strong>Exam Started:</strong> {examStarted ? 'Yes' : 'No'}
+            </p>
+            <p>
+              <strong>Current Question:</strong> {currentQuestionIndex + 1} /{' '}
+              {examData?.questions.length}
+            </p>
+            <p>
+              <strong>Answers Count:</strong> {Object.keys(answers).length}
+            </p>
+            <p>
+              <strong>Time Remaining:</strong> {formatTime(timeRemaining)}
+            </p>
+            <p>
+              <strong>Last Save:</strong> {lastSaveTime || 'Never'}
+            </p>
+            <p>
+              <strong>Auto-Save:</strong>{' '}
+              {currentSession?.autoSaveEnabled ? 'Enabled' : 'Disabled'}
+            </p>
+          </div>
+          <div className="mt-3 space-x-2">
+            <button
+              onClick={handleManualSessionSave}
+              className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+            >
+              Manual Save
+            </button>
+            <button
+              onClick={() => setShowDebugPanel(false)}
+              className="px-2 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-700"
+            >
+              Close
+            </button>
+          </div>
+          <p className="text-xs mt-2 text-gray-300">
+            Press Ctrl+D to toggle, Ctrl+S to save
+          </p>
+        </div>
+      )}
 
       {/* Save Confirmation Toast */}
       {showSaveConfirmation && (
