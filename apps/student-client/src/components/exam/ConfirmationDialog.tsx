@@ -8,7 +8,6 @@ import {
   DialogFooter,
   Button,
 } from '@one-exam-monorepo/ui';
-import { cn } from '@one-exam-monorepo/utils';
 
 interface ConfirmationDialogProps {
   open: boolean;
@@ -72,12 +71,7 @@ export function ConfirmationDialog({
             variant={confirmVariant}
             onClick={handleConfirm}
             disabled={isLoading}
-            className={cn(
-              'flex-1',
-              // Fallback styling for destructive variant if CSS variables don't work
-              confirmVariant === 'destructive' &&
-                'bg-red-600 text-white hover:bg-red-700'
-            )}
+            className="flex-1"
           >
             {isLoading ? 'Loading...' : confirmText}
           </Button>

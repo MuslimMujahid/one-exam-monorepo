@@ -46,11 +46,7 @@ export function ExamHeader({
               Save Answers
             </Button>
 
-            <Button
-              onClick={onFinalSubmit}
-              variant="default"
-              className="bg-red-600 text-white hover:bg-red-700"
-            >
+            <Button onClick={onFinalSubmit} variant="destructive">
               Final Submit
             </Button>
           </div>
