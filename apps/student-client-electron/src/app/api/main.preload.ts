@@ -66,6 +66,7 @@ contextBridge.exposeInMainWorld('electron', {
   getStoredSubmissions: () => ipcRenderer.invoke('get-stored-submissions'),
   clearStoredSubmission: (submissionId: string, sessionId?: string) =>
     ipcRenderer.invoke('clear-stored-submission', submissionId, sessionId),
+  createSubmissionsZip: () => ipcRenderer.invoke('create-submissions-zip'),
   // Test utilities
   testSubmissionEncryption: () =>
     ipcRenderer.invoke('test-submission-encryption'),

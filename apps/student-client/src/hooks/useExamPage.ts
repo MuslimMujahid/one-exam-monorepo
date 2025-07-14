@@ -16,6 +16,7 @@ export function useExamPage({ examId }: UseExamPageOptions) {
 
   // Dialog states
   const [showFinalSubmitDialog, setShowFinalSubmitDialog] = useState(false);
+  const [showSubmissionManager, setShowSubmissionManager] = useState(false);
 
   // Track if we're in the middle of session restoration
   const [isRestoringSession, setIsRestoringSession] = useState(false);
@@ -216,17 +217,17 @@ export function useExamPage({ examId }: UseExamPageOptions) {
 
   // Dialog handlers
   const handleFinalSubmitClick = useCallback(() => {
-    setShowFinalSubmitDialog(true);
+    setShowSubmissionManager(true);
   }, []);
 
-  const confirmFinalSubmit = useCallback(async () => {
-    setShowFinalSubmitDialog(false);
-    await handleFinalSubmitRef.current?.();
-  }, []);
-
-  const cancelFinalSubmit = useCallback(() => {
-    setShowFinalSubmitDialog(false);
-  }, []);
+  const handleSubmissionComplete = useCallback(() => {
+    setShowSubmissionManager(false);
+    examState.submitExam();
+    // Mark the session as submitted
+    session.markSessionSubmitted().catch((error) => {
+      console.error('Failed to mark session as submitted:', error);
+    });
+  }, [examState, session]);
 
   // Manual session save for debugging
   const handleManualSessionSave = useCallback(async () => {
@@ -271,13 +272,14 @@ export function useExamPage({ examId }: UseExamPageOptions) {
     handleStartExam,
     handleSaveAnswers,
     handleFinalSubmitClick,
-    confirmFinalSubmit,
-    cancelFinalSubmit,
+    handleSubmissionComplete,
     handleManualSessionSave,
 
     // Dialog states
     showFinalSubmitDialog,
     setShowFinalSubmitDialog,
+    showSubmissionManager,
+    setShowSubmissionManager,
 
     // Debug
     showDebugPanel: debug.showDebugPanel,

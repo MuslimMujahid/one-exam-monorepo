@@ -41,6 +41,7 @@ export function useExamData({ examId, userId }: UseExamDataOptions) {
           title: decryptedData.title,
           description: decryptedData.description,
           timeLimit,
+          examCode: decryptedData.examCode,
           questions: decryptedData.questions as Question[], // Cast to Question[] type
         };
 

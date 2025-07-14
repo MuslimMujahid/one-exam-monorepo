@@ -56,8 +56,8 @@ export class StudentExamsController {
   @Post('submit-offline')
   @UseInterceptors(FileInterceptor('submissionsZip'))
   async submitOfflineSubmissions(
-    @UploadedFile() file: UploadedFile,
     @Body() dto: SubmitOfflineSubmissionsDto,
+    @UploadedFile() file: UploadedFile,
     @User() user: UserFromJwt
   ) {
     if (!file) {

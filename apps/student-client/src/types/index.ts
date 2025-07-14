@@ -25,6 +25,7 @@ export interface EncryptedSubmissionPackage {
 
 export interface StoredSubmission extends EncryptedSubmissionPackage {
   savedAt: string;
+  sessionId?: string;
 }
 
 // Session management interfaces
@@ -99,6 +100,7 @@ declare global {
         submissionId: string,
         sessionId?: string
       ) => Promise<boolean>;
+      createSubmissionsZip: () => Promise<ArrayBuffer>;
       // Test utilities
       testSubmissionEncryption: () => Promise<{
         success: boolean;

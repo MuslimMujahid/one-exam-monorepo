@@ -797,3 +797,118 @@ ipcMain.handle('cleanup-expired-sessions', async () => {
     throw error;
   }
 });
+
+// Create zip file from stored submissions
+ipcMain.handle('create-submissions-zip', async () => {
+  try {
+    const yazl = (await import('yazl')).default;
+    const userDataPath = app.getPath('userData');
+
+    const zip = new yazl.ZipFile();
+    const zipFiles: string[] = [];
+    let totalSubmissions = 0;
+
+    // Create manifest data
+    const manifest = {
+      totalSubmissions: 0, // Will be updated after counting files
+      createdAt: new Date().toISOString(),
+      version: '1.0',
+      submissions: [] as Array<{
+        submissionId: string;
+        savedAt: string;
+        sessionId: string | null;
+        filename: string;
+      }>,
+    };
+
+    // Check session-based submissions directories
+    const sessionsDir = join(userDataPath, 'exam-sessions');
+    try {
+      const sessionFolders = await fs.readdir(sessionsDir);
+      for (const sessionFolder of sessionFolders) {
+        const sessionPath = join(sessionsDir, sessionFolder);
+        const stat = await fs.stat(sessionPath);
+
+        if (stat.isDirectory()) {
+          const sessionSubmissionsDir = join(sessionPath, 'submissions');
+          try {
+            const sessionFiles = await fs.readdir(sessionSubmissionsDir);
+            for (const file of sessionFiles) {
+              if (file.endsWith('.json')) {
+                const filePath = join(sessionSubmissionsDir, file);
+                const data = await fs.readFile(filePath, 'utf-8');
+                const submissionData = JSON.parse(data);
+
+                // Add file to zip in root directory (not in submissions folder)
+                zip.addFile(filePath, file);
+                zipFiles.push(file);
+                totalSubmissions++;
+
+                // Add to manifest
+                manifest.submissions.push({
+                  submissionId:
+                    submissionData.submissionId || file.replace('.json', ''),
+                  savedAt: submissionData.savedAt || new Date().toISOString(),
+                  sessionId: sessionFolder,
+                  filename: file,
+                });
+              }
+            }
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+              console.warn(
+                `Failed to read submissions for session ${sessionFolder}:`,
+                error
+              );
+            }
+          }
+        }
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        console.warn('Failed to read sessions directory:', error);
+      }
+    }
+
+    // Update manifest with final count
+    manifest.totalSubmissions = totalSubmissions;
+
+    if (totalSubmissions === 0) {
+      throw new Error('No submissions found to create zip file');
+    }
+
+    // Add manifest to zip
+    zip.addBuffer(
+      Buffer.from(JSON.stringify(manifest, null, 2)),
+      'manifest.json'
+    );
+
+    // Generate zip file buffer
+    return new Promise<Buffer>((resolve, reject) => {
+      const chunks: Buffer[] = [];
+
+      zip.outputStream.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+
+      zip.outputStream.on('end', () => {
+        const zipBuffer = Buffer.concat(chunks);
+        console.log(
+          `Created zip file with ${totalSubmissions} submissions, size: ${zipBuffer.length} bytes`
+        );
+        resolve(zipBuffer);
+      });
+
+      zip.outputStream.on('error', (error: Error) => {
+        console.error('Failed to create zip file:', error);
+        reject(error);
+      });
+
+      // Finalize the zip file
+      zip.end();
+    });
+  } catch (error) {
+    console.error('Failed to create submissions zip:', error);
+    throw error;
+  }
+});

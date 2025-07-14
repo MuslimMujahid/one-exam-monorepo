@@ -44,6 +44,7 @@ export interface ExamData {
   title: string;
   description: string;
   timeLimit: number; // in minutes
+  examCode: string;
   questions: Question[];
 }
 
@@ -53,4 +54,39 @@ export interface DownloadExamResponse {
   encryptedExamData: string;
   signedLicense: string;
   downloadedAt: string;
+}
+
+// Submission interfaces
+export interface SubmissionRequest {
+  examId: string;
+  answers: Record<
+    number,
+    {
+      questionId: number;
+      answer: string | number | number[];
+      timeSpent: number;
+    }
+  >;
+}
+
+export interface SubmissionResponse {
+  submissionId: string;
+  submittedAt: string;
+}
+
+export interface OfflineSubmissionRequest {
+  examId: string;
+  examCode: string;
+  examStartTime: string;
+  examEndTime: string;
+  clientInfo?: {
+    userAgent?: string;
+    platform?: string;
+    deviceId?: string;
+  };
+}
+
+export interface OfflineSubmissionResponse {
+  message: string;
+  submissionCount: number;
 }

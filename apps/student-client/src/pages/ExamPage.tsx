@@ -10,7 +10,7 @@ import {
   QuestionDisplay,
   ExamNavigation,
   DebugPanel,
-  ConfirmationDialog,
+  SubmissionManager,
 } from '../components/exam';
 import { AlertBanner, LoadingSpinner } from '@one-exam-monorepo/ui';
 
@@ -161,18 +161,25 @@ export function ExamPage() {
         onClose={exam.hideDebugPanel}
       />
 
-      {/* Final Submit Confirmation Dialog */}
-      <ConfirmationDialog
-        open={exam.showFinalSubmitDialog}
-        onOpenChange={exam.setShowFinalSubmitDialog}
-        title="Final Submit Confirmation"
-        description="Are you sure you want to submit your exam? This action will end your exam session and cannot be undone. Make sure you have reviewed all your answers."
-        confirmText="Yes, Final Submit"
-        cancelText="Cancel"
-        confirmVariant="destructive"
-        onConfirm={exam.confirmFinalSubmit}
-        onCancel={exam.cancelFinalSubmit}
-      />
+      {/* Submission Manager Dialog */}
+      {exam.showSubmissionManager && exam.examData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <SubmissionManager
+              examId={exam.examData.id}
+              examCode={exam.examData.examCode}
+              examTitle={exam.examData.title}
+              examStartTime={
+                exam.currentSession?.examStartedAt || new Date().toISOString()
+              }
+              examEndTime={new Date().toISOString()}
+              answers={exam.answers}
+              isOnline={navigator.onLine}
+              onSubmissionComplete={exam.handleSubmissionComplete}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

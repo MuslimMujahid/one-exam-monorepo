@@ -278,4 +278,163 @@ export class ExamService {
     const timeUntilEnd = ExamService.getTimeUntilEnd(exam);
     return ExamService.formatTimeDuration(timeUntilEnd);
   }
+
+  /**
+   * Submit exam by uploading all stored submission files as a zip
+   * This is the only submission method - works for both online and offline users
+   */
+  static async submitExam(
+    examId: string,
+    examCode: string,
+    examStartTime: string,
+    examEndTime: string,
+    clientInfo?: {
+      userAgent?: string;
+      platform?: string;
+      deviceId?: string;
+    }
+  ): Promise<{ message: string; submissionCount: number }> {
+    console.log('Submitting exam with ID:', examId);
+    if (!window.electron || !window.electron.createSubmissionsZip) {
+      throw new Error('Electron API not available');
+    }
+
+    // Create form data for multipart upload
+    const formData = new FormData();
+
+    // Add metadata
+    formData.append('examId', examId);
+    formData.append('examCode', examCode);
+    formData.append('examStartTime', examStartTime);
+    formData.append('examEndTime', examEndTime);
+    // Leave this out for now
+    // formData.append('clientInfo', JSON.stringify(clientInfo));
+
+    // Create a zip file from actual stored files
+    try {
+      const zipArrayBuffer = await window.electron.createSubmissionsZip();
+      const zipBlob = new Blob([zipArrayBuffer], { type: 'application/zip' });
+      formData.append('submissionsZip', zipBlob, 'offline-submissions.zip');
+    } catch (error) {
+      console.error('Failed to create submissions zip:', error);
+      throw new Error(
+        'Failed to create submission archive: ' +
+          (error instanceof Error ? error.message : 'Unknown error')
+      );
+    }
+    console.log('Successfully created submissions zip');
+    console.log('formData.examId', formData.get('examId'));
+    console.log('formData.examCode', formData.get('examCode'));
+    console.log('formData.examStartTime', formData.get('examStartTime'));
+    console.log('formData.examEndTime', formData.get('examEndTime'));
+    console.log('formData.submissionsZip', formData.get('submissionsZip'));
+
+    const response = await AuthService.authenticatedFetch(
+      `/exams/student/submit-offline`,
+      {
+        method: 'POST',
+        body: formData, // No Content-Type header - let browser set it for multipart
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to submit exam';
+
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      } catch {
+        switch (response.status) {
+          case 400:
+            errorMessage = 'Invalid submission data or format';
+            break;
+          case 401:
+            errorMessage = 'Authentication required';
+            break;
+          case 403:
+            errorMessage = 'Access denied';
+            break;
+          case 404:
+            errorMessage = 'Exam not found';
+            break;
+          case 413:
+            errorMessage = 'Submission file too large';
+            break;
+          case 422:
+            errorMessage = 'Could not process submission data';
+            break;
+          case 500:
+            errorMessage = 'Server error occurred';
+            break;
+          default:
+            errorMessage = `Request failed with status ${response.status}`;
+        }
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return result;
+  }
+
+  /**
+   * Save submission locally for offline later submission
+   */
+  static async saveSubmissionLocally(
+    examId: string,
+    studentId: string,
+    answers: Record<
+      number,
+      {
+        questionId: number;
+        answer: string | number | number[];
+        timeSpent: number;
+      }
+    >,
+    sessionId?: string
+  ): Promise<{
+    submissionId: string;
+    savedAt: string;
+    sessionId: string | null;
+  }> {
+    if (!window.electron || !window.electron.saveSubmissionLocally) {
+      throw new Error('Offline submission not available');
+    }
+
+    try {
+      return await window.electron.saveSubmissionLocally(
+        examId,
+        studentId,
+        answers,
+        sessionId
+      );
+    } catch (error) {
+      console.error('Failed to save submission locally:', error);
+      throw new Error('Failed to save submission for offline access');
+    }
+  }
+
+  /**
+   * Get stored offline submissions count
+   */
+  static async getStoredSubmissionsCount(): Promise<number> {
+    if (!window.electron || !window.electron.getStoredSubmissions) {
+      return 0;
+    }
+
+    try {
+      const submissions = await window.electron.getStoredSubmissions();
+      return submissions.length;
+    } catch (error) {
+      console.error('Failed to get stored submissions count:', error);
+      return 0;
+    }
+  }
 }

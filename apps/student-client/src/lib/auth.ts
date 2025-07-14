@@ -180,7 +180,10 @@ export class AuthService {
       headers: {
         ...options.headers,
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        // Only set Content-Type for non-FormData requests
+        ...(!(options.body instanceof FormData) && {
+          'Content-Type': 'application/json',
+        }),
       },
     });
 
@@ -195,7 +198,10 @@ export class AuthService {
           headers: {
             ...options.headers,
             Authorization: `Bearer ${newToken}`,
-            'Content-Type': 'application/json',
+            // Only set Content-Type for non-FormData requests
+            ...(!(options.body instanceof FormData) && {
+              'Content-Type': 'application/json',
+            }),
           },
         });
       } catch {

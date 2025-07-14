@@ -8,3 +8,4 @@ export { ExamNotFound } from './ExamNotFound';
 export { ExamHeader } from './ExamHeader';
 export { DebugPanel } from './DebugPanel';
 export { ConfirmationDialog } from './ConfirmationDialog';
+export { SubmissionManager } from './SubmissionManager';

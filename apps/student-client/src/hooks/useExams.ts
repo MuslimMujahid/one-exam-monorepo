@@ -156,3 +156,85 @@ export function useClearAllDownloadedExams() {
     },
   });
 }
+
+/**
+ * Hook to submit exam (uploads all stored submissions as zip)
+ */
+export function useSubmitExam() {
+  return useMutation({
+    mutationFn: ({
+      examId,
+      examCode,
+      examStartTime,
+      examEndTime,
+      clientInfo,
+    }: {
+      examId: string;
+      examCode: string;
+      examStartTime: string;
+      examEndTime: string;
+      clientInfo?: {
+        userAgent?: string;
+        platform?: string;
+        deviceId?: string;
+      };
+    }) =>
+      ExamService.submitExam(
+        examId,
+        examCode,
+        examStartTime,
+        examEndTime,
+        clientInfo
+      ),
+    onError: (error) => {
+      console.error('Failed to submit exam:', error);
+    },
+  });
+}
+
+/**
+ * Hook to save submission locally for offline access
+ */
+export function useSaveSubmissionLocally() {
+  return useMutation({
+    mutationFn: ({
+      examId,
+      studentId,
+      answers,
+      sessionId,
+    }: {
+      examId: string;
+      studentId: string;
+      answers: Record<
+        number,
+        {
+          questionId: number;
+          answer: string | number | number[];
+          timeSpent: number;
+        }
+      >;
+      sessionId?: string;
+    }) =>
+      ExamService.saveSubmissionLocally(examId, studentId, answers, sessionId),
+    onError: (error) => {
+      console.error('Failed to save submission locally:', error);
+    },
+  });
+}
+
+/**
+ * Hook to submit offline submissions
+ */
+
+/**
+ * Hook to get stored submissions count
+ */
+export function useStoredSubmissionsCount() {
+  return useQuery({
+    queryKey: ['storedSubmissionsCount'],
+    queryFn: ExamService.getStoredSubmissionsCount,
+    enabled: typeof window !== 'undefined' && !!window.electron,
+    staleTime: 10 * 1000, // 10 seconds
+    gcTime: 30 * 1000, // 30 seconds
+  });
+}
