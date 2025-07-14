@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { SessionSaveData } from '../types';
 import {
-  useStudentExams,
+  useAllExams,
   useJoinExam,
   useDownloadExam,
   useDownloadedExams,
@@ -28,7 +28,10 @@ export function DashboardPage() {
     isLoading: loading,
     error: queryError,
     isError,
-  } = useStudentExams();
+    isOnline,
+    offlineExamsCount,
+    hasConnectionIssues,
+  } = useAllExams();
 
   const joinExamMutation = useJoinExam();
   const downloadExamMutation = useDownloadExam();
@@ -185,7 +188,9 @@ export function DashboardPage() {
     (e) => getExamStatus(e).text === 'Scheduled'
   ).length;
   const downloadedExamsCount =
-    Object.values(downloadedExams).filter(Boolean).length;
+    isOnline && !hasConnectionIssues
+      ? Object.values(downloadedExams).filter(Boolean).length
+      : offlineExamsCount;
 
   if (loading) {
     return <LoadingSpinner fullScreen size="2xl" />;
@@ -197,7 +202,11 @@ export function DashboardPage() {
         userName={user?.name}
         userEmail={user?.email}
         onLogout={logout}
-        onJoinExam={() => setShowJoinModal(true)}
+        onJoinExam={
+          isOnline && !hasConnectionIssues
+            ? () => setShowJoinModal(true)
+            : undefined
+        }
       />
 
       {/* Main Content */}
@@ -208,10 +217,30 @@ export function DashboardPage() {
             <AlertBanner type="success" message={downloadSuccess} />
           )}
 
+          {/* Offline Mode Indicator */}
+          {!isOnline && (
+            <AlertBanner
+              type="warning"
+              message={`You are currently offline. Showing ${offlineExamsCount} downloaded exam(s). Some features may be limited.`}
+            />
+          )}
+
+          {/* Connection Issues Indicator */}
+          {hasConnectionIssues && (
+            <AlertBanner
+              type="warning"
+              message={`Cannot connect to the server. Showing ${offlineExamsCount} downloaded exam(s) instead. Check your internet connection.`}
+            />
+          )}
+
           {/* Exams Section */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              Available Exams
+              {isOnline && !hasConnectionIssues
+                ? 'Available Exams'
+                : `Downloaded Exams ${
+                    !isOnline ? '(Offline)' : '(Server Unavailable)'
+                  }`}
             </h2>
 
             <ExamStatsGrid
@@ -234,11 +263,12 @@ export function DashboardPage() {
               getFormattedTimeUntilEnd={getFormattedTimeUntilEnd}
               onDownloadExam={handleDownloadExam}
               onTakeExam={handleTakeExam}
+              isOnline={isOnline && !hasConnectionIssues}
             />
           </div>
 
           <JoinExamModal
-            isOpen={showJoinModal}
+            isOpen={showJoinModal && isOnline && !hasConnectionIssues}
             examCode={examCode}
             passKey={passKey}
             joinError={joinError}

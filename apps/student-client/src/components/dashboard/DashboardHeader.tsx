@@ -5,7 +5,7 @@ interface DashboardHeaderProps {
   userName?: string;
   userEmail?: string;
   onLogout: () => void;
-  onJoinExam: () => void;
+  onJoinExam?: () => void;
 }
 
 export function DashboardHeader({
@@ -27,12 +27,14 @@ export function DashboardHeader({
             </p>
           </div>
           <div className="flex space-x-4">
-            <Button
-              onClick={onJoinExam}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Join Exam
-            </Button>
+            {onJoinExam && (
+              <Button
+                onClick={onJoinExam}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Join Exam
+              </Button>
+            )}
             <Button
               onClick={onLogout}
               variant="outline"

@@ -16,6 +16,7 @@ interface ExamCardProps {
   isSubmitted: boolean;
   onDownload: (examCode: string) => void;
   onTakeExam: (examId: string) => void;
+  isOnline?: boolean;
 }
 
 export function ExamCard({
@@ -31,6 +32,7 @@ export function ExamCard({
   isSubmitted,
   onDownload,
   onTakeExam,
+  isOnline = true,
 }: ExamCardProps) {
   return (
     <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow">
@@ -107,7 +109,7 @@ export function ExamCard({
         </div>
 
         <div className="mt-6 space-y-2">
-          {canTakeExam && !isSubmitted && (
+          {canTakeExam && !isSubmitted && isOnline && (
             <Button
               onClick={() => onDownload(exam.examCode)}
               variant="outline"
@@ -155,7 +157,9 @@ export function ExamCard({
                 ? status.text === 'Scheduled'
                   ? 'Not Started'
                   : 'Unavailable'
-                : 'Download Required'}
+                : isOnline
+                ? 'Download Required'
+                : 'Offline Mode'}
             </Button>
           )}
         </div>

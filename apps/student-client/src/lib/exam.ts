@@ -437,4 +437,74 @@ export class ExamService {
       return 0;
     }
   }
+
+  /**
+   * Get all downloaded exams for offline access
+   */
+  static async getOfflineExams(): Promise<Exam[]> {
+    if (!window.electron || !window.electron.getAllDownloadedExams) {
+      return [];
+    }
+
+    try {
+      const downloadedExamsData = await window.electron.getAllDownloadedExams();
+
+      // Decrypt and convert downloaded exam data to Exam format
+      const offlineExams: Exam[] = [];
+
+      for (const examData of downloadedExamsData) {
+        try {
+          // Decrypt the exam data to get full exam details
+          const decryptedData = await window.electron.decryptExamData(
+            examData.examId
+          );
+
+          // Convert to Exam interface format
+          const exam: Exam = {
+            id: decryptedData.id,
+            examCode: decryptedData.examCode,
+            title: decryptedData.title,
+            description: decryptedData.description || '',
+            startDate: decryptedData.startDate,
+            endDate: decryptedData.endDate,
+            // Set required fields with reasonable defaults for offline exams
+            passKey: '', // Not needed for offline access
+            createdAt: examData.downloadedAt || new Date().toISOString(),
+            updatedAt: examData.downloadedAt || new Date().toISOString(),
+            userId: '', // Not relevant for offline access
+            status: 'PUBLISHED' as const, // Assume published if downloaded
+            questionsCount: Array.isArray(decryptedData.questions)
+              ? decryptedData.questions.length
+              : 0,
+            duration: ExamService.getExamDuration({
+              startDate: decryptedData.startDate,
+              endDate: decryptedData.endDate,
+            } as Exam),
+            isOffline: true, // Mark as offline exam
+          };
+
+          offlineExams.push(exam);
+        } catch (decryptError) {
+          console.error(
+            `Failed to decrypt exam ${examData.examId}:`,
+            decryptError
+          );
+          // Skip this exam if decryption fails
+          continue;
+        }
+      }
+
+      return offlineExams;
+    } catch (error) {
+      console.error('Failed to get offline exams:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Check if app is currently online
+   */
+  static isOnline(): boolean {
+    return typeof navigator !== 'undefined' && navigator.onLine;
+  }
 }

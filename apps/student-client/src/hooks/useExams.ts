@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { ExamService } from '../lib/exam';
 import { JoinExamRequest, Exam } from '../types/exam';
+import { useNetworkStatus } from './useNetworkStatus';
 
 // Query Keys
 export const examKeys = {
@@ -223,10 +225,6 @@ export function useSaveSubmissionLocally() {
 }
 
 /**
- * Hook to submit offline submissions
- */
-
-/**
  * Hook to get stored submissions count
  */
 export function useStoredSubmissionsCount() {
@@ -237,4 +235,72 @@ export function useStoredSubmissionsCount() {
     staleTime: 10 * 1000, // 10 seconds
     gcTime: 30 * 1000, // 30 seconds
   });
+}
+
+/**
+ * Hook to get combined online and offline exams
+ */
+export function useAllExams() {
+  const isOnline = useNetworkStatus();
+
+  // Get online exams
+  const onlineExamsQuery = useQuery({
+    queryKey: examKeys.studentExams(),
+    queryFn: ExamService.getStudentExams,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    enabled: isOnline, // Only fetch when online
+    retry: (failureCount, error) => {
+      // Don't retry on network errors when offline
+      if (!isOnline) return false;
+      // Retry up to 2 times for other errors
+      return failureCount < 2;
+    },
+  });
+
+  // Get offline exams
+  const offlineExamsQuery = useQuery({
+    queryKey: ['offlineExams'],
+    queryFn: ExamService.getOfflineExams,
+    staleTime: 30 * 1000, // 30 seconds - offline data doesn't change frequently
+    gcTime: 60 * 1000, // 1 minute
+    enabled: typeof window !== 'undefined' && !!window.electron,
+    retry: false, // Don't retry offline queries
+  });
+  // Combine the results
+  const combinedExams = useMemo(() => {
+    const onlineExams = onlineExamsQuery.data || [];
+    const offlineExams = offlineExamsQuery.data || [];
+
+    // If online and we have online data, show online exams
+    if (isOnline && onlineExams.length > 0 && !onlineExamsQuery.isError) {
+      return onlineExams;
+    }
+
+    // If offline or online request failed, show downloaded exams
+    return offlineExams;
+  }, [
+    onlineExamsQuery.data,
+    offlineExamsQuery.data,
+    isOnline,
+    onlineExamsQuery.isError,
+  ]);
+
+  return {
+    data: combinedExams,
+    isLoading: isOnline
+      ? onlineExamsQuery.isLoading
+      : offlineExamsQuery.isLoading,
+    error:
+      isOnline && !onlineExamsQuery.isError
+        ? onlineExamsQuery.error
+        : offlineExamsQuery.error,
+    isError:
+      isOnline && onlineExamsQuery.isError
+        ? onlineExamsQuery.isError
+        : offlineExamsQuery.isError,
+    isOnline: isOnline && !onlineExamsQuery.isError,
+    offlineExamsCount: offlineExamsQuery.data?.length || 0,
+    hasConnectionIssues: isOnline && onlineExamsQuery.isError,
+  };
 }

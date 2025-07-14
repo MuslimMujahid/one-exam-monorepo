@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.invoke('save-exam-data', examCode, data),
   loadExamData: (examCode: string) =>
     ipcRenderer.invoke('load-exam-data', examCode),
+  getAllDownloadedExams: () => ipcRenderer.invoke('get-all-downloaded-exams'),
   clearExamData: (examCode: string) =>
     ipcRenderer.invoke('clear-exam-data', examCode),
   clearAllExamData: () => ipcRenderer.invoke('clear-all-exam-data'),

@@ -912,3 +912,49 @@ ipcMain.handle('create-submissions-zip', async () => {
     throw error;
   }
 });
+
+// Get all downloaded exams
+ipcMain.handle('get-all-downloaded-exams', async () => {
+  try {
+    const userDataPath = app.getPath('userData');
+    const examsDir = join(userDataPath, OFFLINE_EXAM_CONFIG.EXAMS_DIRECTORY);
+
+    // Check if directory exists
+    try {
+      const files = await fs.readdir(examsDir);
+
+      // Filter for exam files and read their data
+      const examFiles = files.filter((file) =>
+        file.endsWith(OFFLINE_EXAM_CONFIG.EXAM_FILE_EXTENSION)
+      );
+
+      const examsData = await Promise.all(
+        examFiles.map(async (file) => {
+          try {
+            const filePath = join(examsDir, file);
+            const data = await fs.readFile(filePath, 'utf-8');
+            return JSON.parse(data);
+          } catch (error) {
+            console.error(`Failed to read exam file ${file}:`, error);
+            return null;
+          }
+        })
+      );
+
+      // Filter out any null entries from failed reads
+      const validExams = examsData.filter((exam) => exam !== null);
+
+      console.log(`Found ${validExams.length} downloaded exams`);
+      return validExams;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        console.log('No downloaded exams directory found');
+        return []; // Directory doesn't exist, no exams downloaded
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error('Failed to get all downloaded exams:', error);
+    throw error;
+  }
+});

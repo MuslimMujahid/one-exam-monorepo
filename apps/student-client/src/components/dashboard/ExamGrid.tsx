@@ -16,6 +16,7 @@ interface ExamGridProps {
   getFormattedTimeUntilEnd: (exam: Exam) => string;
   onDownloadExam: (examCode: string) => void;
   onTakeExam: (examId: string) => void;
+  isOnline?: boolean;
 }
 
 export function ExamGrid({
@@ -31,15 +32,20 @@ export function ExamGrid({
   getFormattedTimeUntilEnd,
   onDownloadExam,
   onTakeExam,
+  isOnline = true,
 }: ExamGridProps) {
   if (exams.length === 0) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500 text-lg">
-          No exams available at the moment.
+          {isOnline
+            ? 'No exams available at the moment.'
+            : 'No offline exams available.'}
         </p>
         <p className="text-gray-400 text-sm mt-2">
-          Click "Join Exam" to join an exam using an exam code.
+          {isOnline
+            ? 'Click "Join Exam" to join an exam using an exam code.'
+            : 'Connect to the internet to download exams for offline access.'}
         </p>
       </div>
     );
@@ -58,7 +64,7 @@ export function ExamGrid({
             exam={exam}
             status={status}
             canTakeExam={canTake}
-            isDownloaded={downloadedExams[exam.id] || false}
+            isDownloaded={downloadedExams[exam.id] || exam.isOffline || false}
             isDownloading={downloadingExams.has(exam.examCode)}
             activeSession={activeExamSessions[exam.id] || null}
             submittedSession={submittedExamSessions[exam.id] || null}
@@ -75,6 +81,7 @@ export function ExamGrid({
             }
             onDownload={onDownloadExam}
             onTakeExam={onTakeExam}
+            isOnline={isOnline}
           />
         );
       })}

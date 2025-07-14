@@ -64,6 +64,7 @@ declare global {
         data: DownloadExamResponse
       ) => Promise<void>;
       loadExamData: (examCode: string) => Promise<DownloadExamResponse | null>;
+      getAllDownloadedExams: () => Promise<DownloadExamResponse[]>;
       clearExamData: (examCode: string) => Promise<boolean>;
       clearAllExamData: () => Promise<number>;
       getAppVersion: () => Promise<string>;

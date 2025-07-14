@@ -11,6 +11,8 @@ export interface Exam {
   userId: string;
   status: 'DRAFT' | 'PUBLISHED';
   questionsCount: number;
+  duration?: number; // Duration in minutes
+  isOffline?: boolean; // Flag to indicate if this is an offline exam
 }
 
 export interface JoinExamRequest {
