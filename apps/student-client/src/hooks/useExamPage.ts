@@ -22,7 +22,12 @@ export function useExamPage({ examId }: UseExamPageOptions) {
   const [isRestoringSession, setIsRestoringSession] = useState(false);
 
   // Load exam data
-  const { examData, isLoading, error, isElectronAvailable } = useExamData({
+  const {
+    examData,
+    isLoading: isLoadingExamData,
+    error,
+    isElectronAvailable,
+  } = useExamData({
     examId,
     userId: user?.id,
   });
@@ -49,6 +54,11 @@ export function useExamPage({ examId }: UseExamPageOptions) {
     studentId: user?.id || '',
     isElectronAvailable,
     onSessionRestored: (sessionData) => {
+      if (!examData) {
+        console.error('Exam data not available for session restoration');
+        return;
+      }
+
       setIsRestoringSession(true);
 
       examState.restoreFromSession({
@@ -60,7 +70,10 @@ export function useExamPage({ examId }: UseExamPageOptions) {
 
       // Restore timer state to prevent auto-submit on reload
       if (sessionData.timeRemaining > 0) {
-        timer.setTimeRemaining(sessionData.timeRemaining);
+        const timeRemaining = Math.round(
+          (new Date(examData.endTime).getTime() - Date.now()) / 1000
+        ); // Convert to seconds
+        timer.setTimeRemaining(timeRemaining);
       }
 
       // Session restoration complete
@@ -92,7 +105,10 @@ export function useExamPage({ examId }: UseExamPageOptions) {
       timer.timeRemaining === 0 &&
       !isRestoringSession
     ) {
-      timer.setInitialTime(examData.timeLimit * 60);
+      const timeLimit = Math.round(
+        (new Date(examData.endTime).getTime() - Date.now()) / 1000
+      ); // Convert to seconds
+      timer.setInitialTime(timeLimit);
     }
   }, [
     examData,
@@ -198,7 +214,9 @@ export function useExamPage({ examId }: UseExamPageOptions) {
   const handleStartExam = useCallback(async () => {
     if (examData) {
       examState.startExam();
-      const timeLimit = examData.timeLimit * 60;
+      const timeLimit = Math.round(
+        (new Date(examData.endTime).getTime() - Date.now()) / 1000
+      ); // Convert to seconds
       timer.setInitialTime(timeLimit);
 
       // Update session with start information
@@ -229,6 +247,10 @@ export function useExamPage({ examId }: UseExamPageOptions) {
     });
   }, [examState, session]);
 
+  const handleSubmissionCancel = useCallback(() => {
+    setShowSubmissionManager(false);
+  }, []);
+
   // Manual session save for debugging
   const handleManualSessionSave = useCallback(async () => {
     console.log('Manual session save triggered');
@@ -248,9 +270,12 @@ export function useExamPage({ examId }: UseExamPageOptions) {
     isExamActive: examState.examStarted && !examState.examSubmitted,
   });
 
+  const isLoading = isLoadingExamData && session.isResumingSession;
+
   return {
     // Data
     examData,
+    sessionData: session.currentSession,
     isLoading,
     error: error || session.sessionError, // Include session errors with exam data errors
     isElectronAvailable,
@@ -273,6 +298,7 @@ export function useExamPage({ examId }: UseExamPageOptions) {
     handleSaveAnswers,
     handleFinalSubmitClick,
     handleSubmissionComplete,
+    handleSubmissionCancel,
     handleManualSessionSave,
 
     // Dialog states

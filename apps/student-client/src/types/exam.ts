@@ -45,7 +45,8 @@ export interface ExamData {
   id: string;
   title: string;
   description: string;
-  timeLimit: number; // in minutes
+  startTime: string;
+  endTime: string;
   examCode: string;
   questions: Question[];
 }

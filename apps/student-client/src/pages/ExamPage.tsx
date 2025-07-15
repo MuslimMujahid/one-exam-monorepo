@@ -74,19 +74,20 @@ export function ExamPage() {
     );
   }
 
-  if (!exam.examData) {
+  if (!exam.examData || !exam.sessionData) {
     return <ExamNotFound onBackToDashboard={handleBackToDashboard} />;
   }
 
   if (exam.examSubmitted) {
+    const timeUsed =
+      new Date(exam.examData.endTime).getTime() -
+      new Date(exam.sessionData.examStartedAt).getTime();
     return (
       <ExamSubmission
         examTitle={exam.examData.title}
         answeredCount={exam.answeredCount}
         totalQuestions={exam.totalQuestions}
-        timeUsed={exam.formatTime(
-          exam.examData.timeLimit * 60 - exam.timeRemaining
-        )}
+        timeUsed={exam.formatTime(timeUsed)}
         onBackToDashboard={handleBackToDashboard}
       />
     );
@@ -175,7 +176,9 @@ export function ExamPage() {
               examEndTime={new Date().toISOString()}
               answers={exam.answers}
               isOnline={navigator.onLine}
+              totalQuestions={exam.examData.questions.length}
               onSubmissionComplete={exam.handleSubmissionComplete}
+              onSubmissionCancel={exam.handleSubmissionCancel}
             />
           </div>
         </div>
