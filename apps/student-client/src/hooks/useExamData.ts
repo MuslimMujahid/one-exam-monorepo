@@ -33,14 +33,12 @@ export function useExamData({ examId, userId }: UseExamDataOptions) {
           );
 
         // Convert DecryptedExamData to ExamData format expected by the UI
-        const timeLimit = Math.round(
-          (new Date(decryptedData.endDate).getTime() - Date.now()) / (60 * 1000)
-        ); // Convert to minutes
         const examData: ExamData = {
           id: decryptedData.id,
           title: decryptedData.title,
           description: decryptedData.description,
-          timeLimit,
+          startTime: decryptedData.startDate,
+          endTime: decryptedData.endDate,
           examCode: decryptedData.examCode,
           questions: decryptedData.questions as Question[], // Cast to Question[] type
         };

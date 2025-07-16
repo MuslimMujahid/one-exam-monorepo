@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSubmitExam, useStoredSubmissionsCount } from '../../hooks/useExams';
+import { useSubmitExam } from '../../hooks/useExams';
 import { Button } from '@one-exam-monorepo/ui';
 import { toast } from 'sonner';
 
@@ -18,7 +18,9 @@ interface SubmissionManagerProps {
     }
   >;
   isOnline?: boolean;
+  totalQuestions: number;
   onSubmissionComplete?: () => void;
+  onSubmissionCancel?: () => void;
 }
 
 export function SubmissionManager({
@@ -29,17 +31,18 @@ export function SubmissionManager({
   examEndTime,
   answers,
   isOnline = true,
+  totalQuestions,
   onSubmissionComplete,
+  onSubmissionCancel,
 }: SubmissionManagerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitExamMutation = useSubmitExam();
-  const { data: storedSubmissionsCount = 0 } = useStoredSubmissionsCount();
 
   const handleSubmitExam = async () => {
     setIsSubmitting(true);
     try {
-      const result = await submitExamMutation.mutateAsync({
+      await submitExamMutation.mutateAsync({
         examId,
         examCode,
         examStartTime,
@@ -52,7 +55,6 @@ export function SubmissionManager({
       });
 
       toast.success('Exam submitted successfully!');
-
       onSubmissionComplete?.();
     } catch (error) {
       console.error('Exam submission failed:', error);
@@ -63,6 +65,11 @@ export function SubmissionManager({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCancelSubmission = () => {
+    setIsSubmitting(false);
+    onSubmissionCancel?.();
   };
 
   const isPending = submitExamMutation.isPending || isSubmitting;
@@ -79,7 +86,10 @@ export function SubmissionManager({
           <h4 className="font-medium text-gray-900 mb-2">{examTitle}</h4>
           <div className="text-sm text-gray-600 space-y-1">
             <p>Exam Code: {examCode}</p>
-            <p>Answers Ready: {Object.keys(answers).length} questions</p>
+            <p>
+              Answers Ready: {Object.keys(answers).length}/{totalQuestions}{' '}
+              questions
+            </p>
           </div>
         </div>
 
@@ -101,28 +111,6 @@ export function SubmissionManager({
               : 'Your answers are saved locally and will be submitted when you regain internet connection'}
           </p>
         </div>
-
-        {/* Stored Submissions Info */}
-        {storedSubmissionsCount > 0 && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center">
-              <svg
-                className="h-5 w-5 text-blue-400 mr-2"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span className="text-sm text-blue-800">
-                You have {storedSubmissionsCount} submission(s) ready to upload
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* Submission Note */}
         <div className="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -149,7 +137,15 @@ export function SubmissionManager({
         </div>
 
         {/* Submit Button */}
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-4">
+          <Button
+            onClick={handleCancelSubmission}
+            variant="outline"
+            className="px-6 py-3 text-lg"
+            size="lg"
+          >
+            Cancel
+          </Button>
           <Button
             onClick={handleSubmitExam}
             disabled={isPending || !isOnline}
