@@ -38,23 +38,9 @@ export function FloatingConnectionIndicator() {
   };
 
   const getStatusText = () => {
-    if (!isNetworkOnline) return 'Offline';
-    if (hasConnectionIssues) return 'Limited';
+    if (!isNetworkOnline || hasConnectionIssues) return 'Offline';
     if (isOnline) return 'Online';
     return 'Checking...';
-  };
-
-  const getStatusDescription = () => {
-    if (!isNetworkOnline) {
-      return 'No internet connection detected';
-    }
-    if (hasConnectionIssues) {
-      return `Server unreachable: ${serverError}`;
-    }
-    if (isOnline) {
-      return 'Connected to exam server';
-    }
-    return 'Checking connection status...';
   };
 
   return (
@@ -138,13 +124,6 @@ export function FloatingConnectionIndicator() {
           `}
         >
           <div className="space-y-3">
-            {/* Status description */}
-            <div>
-              <p className="text-sm text-gray-600 mb-2">
-                {getStatusDescription()}
-              </p>
-            </div>
-
             {/* Detailed status grid */}
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="space-y-1">

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AuthService } from '../lib/auth';
 import { checkServerHealth } from '../lib/connectionUtils';
+import { useConnectionSelectors } from '../store/connectionStore';
 
 export interface ConnectionStatus {
   /** Whether the browser detects internet connectivity */
@@ -24,12 +25,19 @@ export interface ConnectionStatus {
  * This is crucial for an exam platform that needs to work offline
  */
 export function useConnectionStatus(): ConnectionStatus {
-  const [isNetworkOnline, setIsNetworkOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true
-  );
-  const [isServerReachable, setIsServerReachable] = useState(true);
-  const [lastServerCheck, setLastServerCheck] = useState<Date | null>(null);
-  const [serverError, setServerError] = useState<string | null>(null);
+  // Use Zustand store for persistent state management
+  const {
+    isNetworkOnline,
+    isServerReachable,
+    lastServerCheck,
+    serverError,
+    isOnline,
+    hasConnectionIssues,
+    setNetworkOnline,
+    setServerReachable,
+    setLastServerCheck,
+    setIsChecking,
+  } = useConnectionSelectors();
 
   // Use refs to avoid stale closures in intervals
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -47,36 +55,33 @@ export function useConnectionStatus(): ConnectionStatus {
 
     // Don't check server if network is offline
     if (!navigator.onLine) {
-      setIsServerReachable(false);
-      setServerError('Network is offline');
+      setServerReachable(false, 'Network is offline');
       return;
     }
 
     isCheckingRef.current = true;
+    setIsChecking(true);
 
     try {
       const result = await checkServerHealth(10000);
 
       if (result.isReachable) {
-        setIsServerReachable(true);
-        setServerError(null);
+        setServerReachable(true);
         setLastServerCheck(new Date());
       } else {
-        setIsServerReachable(false);
-        setServerError(result.error || 'Server health check failed');
+        setServerReachable(false, result.error || 'Server health check failed');
       }
     } catch (error) {
-      setIsServerReachable(false);
-
       if (error instanceof Error) {
-        setServerError(error.message);
+        setServerReachable(false, error.message);
       } else {
-        setServerError('Failed to reach server');
+        setServerReachable(false, 'Failed to reach server');
       }
     } finally {
       isCheckingRef.current = false;
+      setIsChecking(false);
     }
-  }, []);
+  }, [setServerReachable, setLastServerCheck, setIsChecking]);
 
   /**
    * Check server connection with an authenticated endpoint as fallback
@@ -93,6 +98,7 @@ export function useConnectionStatus(): ConnectionStatus {
     }
 
     isCheckingRef.current = true;
+    setIsChecking(true);
 
     try {
       // Try a lightweight authenticated endpoint
@@ -101,42 +107,40 @@ export function useConnectionStatus(): ConnectionStatus {
       });
 
       if (response.ok) {
-        setIsServerReachable(true);
-        setServerError(null);
+        setServerReachable(true);
         setLastServerCheck(new Date());
       } else {
-        setIsServerReachable(false);
-        setServerError(`Authentication check failed: ${response.status}`);
+        setServerReachable(
+          false,
+          `Authentication check failed: ${response.status}`
+        );
       }
     } catch (error) {
-      setIsServerReachable(false);
-
       if (error instanceof Error) {
-        setServerError(error.message);
+        setServerReachable(false, error.message);
       } else {
-        setServerError('Authentication check failed');
+        setServerReachable(false, 'Authentication check failed');
       }
     } finally {
       isCheckingRef.current = false;
+      setIsChecking(false);
     }
-  }, []);
+  }, [setServerReachable, setLastServerCheck, setIsChecking]);
 
   /**
    * Handle network status changes
    */
   const handleNetworkChange = useCallback(() => {
     const newNetworkStatus = navigator.onLine;
-    setIsNetworkOnline(newNetworkStatus);
+    setNetworkOnline(newNetworkStatus);
 
     if (newNetworkStatus) {
       // Network came back online, check server immediately
       checkServerConnection();
     } else {
-      // Network went offline
-      setIsServerReachable(false);
-      setServerError('Network is offline');
+      // Network went offline - this is already handled by setNetworkOnline
     }
-  }, [checkServerConnection]);
+  }, [checkServerConnection, setNetworkOnline]);
 
   /**
    * Start periodic server checks
@@ -181,7 +185,7 @@ export function useConnectionStatus(): ConnectionStatus {
     if (typeof window === 'undefined') return;
 
     // Set initial network status
-    setIsNetworkOnline(navigator.onLine);
+    setNetworkOnline(navigator.onLine);
 
     // Add network event listeners
     window.addEventListener('online', handleNetworkChange);
@@ -205,11 +209,7 @@ export function useConnectionStatus(): ConnectionStatus {
         timeoutRef.current = null;
       }
     };
-  }, [handleNetworkChange, startPeriodicChecks]);
-
-  // Calculate derived values
-  const isOnline = isNetworkOnline && isServerReachable;
-  const hasConnectionIssues = isNetworkOnline && !isServerReachable;
+  }, [handleNetworkChange, startPeriodicChecks, setNetworkOnline]);
 
   return {
     isNetworkOnline,
@@ -240,12 +240,11 @@ export function useConnectionEvents(
   onServerReconnect?: () => void,
   onServerDisconnect?: () => void
 ) {
-  const {
-    isOnline,
-    isServerReachable,
-    isNetworkOnline,
-    checkServerConnection,
-  } = useConnectionStatus();
+  const { isOnline, isServerReachable, isNetworkOnline } =
+    useConnectionSelectors();
+
+  // Get the enhanced server check function
+  const { checkServerConnection } = useConnectionStatus();
 
   // Track previous states to detect transitions
   const [prevIsOnline, setPrevIsOnline] = useState(isOnline);
