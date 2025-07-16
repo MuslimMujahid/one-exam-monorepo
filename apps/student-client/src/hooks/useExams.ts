@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { ExamService } from '../lib/exam';
 import { JoinExamRequest, Exam } from '../types/exam';
-import { useNetworkStatus } from './useNetworkStatus';
+import { useConnectionStatus } from './useConnectionStatus';
 
 // Query Keys
 export const examKeys = {
@@ -241,7 +241,8 @@ export function useStoredSubmissionsCount() {
  * Hook to get combined online and offline exams
  */
 export function useAllExams() {
-  const isOnline = useNetworkStatus();
+  const { isOnline, hasConnectionIssues, isNetworkOnline } =
+    useConnectionStatus();
 
   // Get online exams
   const onlineExamsQuery = useQuery({
@@ -249,10 +250,10 @@ export function useAllExams() {
     queryFn: ExamService.getStudentExams,
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes
-    enabled: isOnline, // Only fetch when online
+    enabled: isOnline, // Only fetch when fully online (network + server)
     retry: (failureCount, error) => {
       // Don't retry on network errors when offline
-      if (!isOnline) return false;
+      if (!isNetworkOnline) return false;
       // Retry up to 2 times for other errors
       return failureCount < 2;
     },
@@ -299,8 +300,8 @@ export function useAllExams() {
       isOnline && onlineExamsQuery.isError
         ? onlineExamsQuery.isError
         : offlineExamsQuery.isError,
-    isOnline: isOnline && !onlineExamsQuery.isError,
+    isOnline: isOnline,
     offlineExamsCount: offlineExamsQuery.data?.length || 0,
-    hasConnectionIssues: isOnline && onlineExamsQuery.isError,
+    hasConnectionIssues: hasConnectionIssues,
   };
 }

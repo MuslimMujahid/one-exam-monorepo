@@ -225,14 +225,6 @@ export function DashboardPage() {
             />
           )}
 
-          {/* Connection Issues Indicator */}
-          {hasConnectionIssues && (
-            <AlertBanner
-              type="warning"
-              message={`Cannot connect to the server. Showing ${offlineExamsCount} downloaded exam(s) instead. Check your internet connection.`}
-            />
-          )}
-
           {/* Exams Section */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">

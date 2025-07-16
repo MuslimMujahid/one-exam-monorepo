@@ -13,6 +13,12 @@ export class AppController {
     return this.appService.getData();
   }
 
+  // Health check endpoint for monitoring server status
+  @Get('health')
+  getHealth() {
+    return this.appService.getHealth();
+  }
+
   // Route protected by authentication only
   @UseGuards(JwtAuthGuard)
   @Get('protected')
