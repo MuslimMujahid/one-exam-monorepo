@@ -30,27 +30,27 @@ console.log('✅ License key generated successfully');
 
 
 // Write private key to backend keys directory
-const backendPrivateKeyPath = path.join(__dirname, 'apps', 'core-backend', 'src', 'keys', 'private.pem');
+const backendPrivateKeyPath = path.join(__dirname, '..', 'apps', 'core-backend', 'src', 'keys', 'private.pem');
 fs.writeFileSync(backendPrivateKeyPath, privateKey);
 console.log('✅ Private key written to:', backendPrivateKeyPath);
 
 // Write public key to backend keys directory
-const backendPublicKeyPath = path.join(__dirname, 'apps', 'core-backend', 'src', 'keys', 'public.pem');
+const backendPublicKeyPath = path.join(__dirname, '..', 'apps', 'core-backend', 'src', 'keys', 'public.pem');
 fs.writeFileSync(backendPublicKeyPath, publicKey);
 console.log('✅ Public key written to:', backendPublicKeyPath);
 
 // Write license key to backend keys directory
-const backendLicenseKeyPath = path.join(__dirname, 'apps', 'core-backend', 'src', 'keys', 'license.key');
+const backendLicenseKeyPath = path.join(__dirname, '..', 'apps', 'core-backend', 'src', 'keys', 'license.key');
 fs.writeFileSync(backendLicenseKeyPath, licenseKey);
 console.log('✅ License key written to:', backendLicenseKeyPath);
 
 // Write public key to Electron keys directory
-const electronPublicKeyPath = path.join(__dirname, 'apps', 'student-client-electron', 'src', 'keys', 'public.pem');
+const electronPublicKeyPath = path.join(__dirname, '..', 'apps', 'student-client-electron', 'src', 'keys', 'public.pem');
 fs.writeFileSync(electronPublicKeyPath, publicKey);
 console.log('✅ Public key written to:', electronPublicKeyPath);
 
 // Write license key to Electron keys directory
-const electronLicenseKeyPath = path.join(__dirname, 'apps', 'student-client-electron', 'src', 'keys', 'license.key');
+const electronLicenseKeyPath = path.join(__dirname, '..', 'apps', 'student-client-electron', 'src', 'keys', 'license.key');
 fs.writeFileSync(electronLicenseKeyPath, licenseKey);
 console.log('✅ License key written to:', electronLicenseKeyPath);
 

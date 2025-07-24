@@ -1,5 +1,0 @@
-text,questionType,options,points
-What is the capital of France?,multiple-choice-single,"[{""value"": ""Berlin"", ""isCorrect"": false}, {""value"": ""Madrid"", ""isCorrect"": false}, {""value"": ""Paris"", ""isCorrect"": true}, {""value"": ""Rome"", ""isCorrect"": false}]",5
-Which of the following are primary colors?,multiple-choice-multiple,"[{""value"": ""Red"", ""isCorrect"": true}, {""value"": ""Green"", ""isCorrect"": false}, {""value"": ""Blue"", ""isCorrect"": true}, {""value"": ""Yellow"", ""isCorrect"": true}]",7
-Explain the concept of photosynthesis.,text,,10
-What is 2 + 2?,multiple-choice-single,"[{""value"": ""3"", ""isCorrect"": false}, {""value"": ""4"", ""isCorrect"": true}, {""value"": ""5"", ""isCorrect"": false}, {""value"": ""6"", ""isCorrect"": false}]",3
