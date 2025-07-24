@@ -322,12 +322,6 @@ export class ExamService {
           (error instanceof Error ? error.message : 'Unknown error')
       );
     }
-    console.log('Successfully created submissions zip');
-    console.log('formData.examId', formData.get('examId'));
-    console.log('formData.examCode', formData.get('examCode'));
-    console.log('formData.examStartTime', formData.get('examStartTime'));
-    console.log('formData.examEndTime', formData.get('examEndTime'));
-    console.log('formData.submissionsZip', formData.get('submissionsZip'));
 
     const response = await AuthService.authenticatedFetch(
       `/exams/student/submit-offline`,

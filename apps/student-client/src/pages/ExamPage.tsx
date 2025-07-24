@@ -175,7 +175,7 @@ export function ExamPage() {
               }
               examEndTime={new Date().toISOString()}
               answers={exam.answers}
-              isOnline={navigator.onLine}
+              isOnline={exam.isOnline}
               totalQuestions={exam.examData.questions.length}
               onSubmissionComplete={exam.handleSubmissionComplete}
               onSubmissionCancel={exam.handleSubmissionCancel}

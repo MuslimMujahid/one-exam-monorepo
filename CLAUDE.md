@@ -159,6 +159,11 @@ Required environment variables:
 
 ## Common Development Patterns
 
+### Typescript
+1. Ensure type safety and consistency across the codebase
+2. Avoid using `any` type as much as possible
+3. Use interface for defining component props and types for everything else
+
 ### Adding New Components
 1. Create in appropriate shared/ui location if reusable
 2. Export from shared/ui/src/index.ts
@@ -179,3 +184,12 @@ Required environment variables:
 - React Testing Library for component tests
 - Cypress for e2e tests
 - Use nx test commands for consistency
+
+### When suggesting code or solutions:
+- Follow the project architecture patterns and dependencies
+- Prefer using shared libraries (ui, utils) when applicable
+- Maintain consistency with existing Tailwind CSS styling
+- Consider the monorepo structure when suggesting import paths
+- Use NX commands for tasks like generating components, building, or testing
+- Respect the existing technology choices (React, Next.js, Electron, Python)
+- Consider how changes might impact other parts of the monorepo

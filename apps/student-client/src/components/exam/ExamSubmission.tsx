@@ -47,9 +47,9 @@ export function ExamSubmission({
               <strong>Questions Answered:</strong> {answeredCount}/
               {totalQuestions}
             </p>
-            <p>
+            {/* <p>
               <strong>Time Used:</strong> {timeUsed}
-            </p>
+            </p> */}
           </div>
           <Button onClick={onBackToDashboard} className="w-full">
             Back to Dashboard

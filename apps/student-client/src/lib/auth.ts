@@ -18,6 +18,7 @@ export class AuthService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
       },
       body: JSON.stringify(credentials),
     });
@@ -133,6 +134,7 @@ export class AuthService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
       },
       body: JSON.stringify({ refreshToken }),
     });
@@ -180,6 +182,7 @@ export class AuthService {
       headers: {
         ...options.headers,
         Authorization: `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true',
         // Only set Content-Type for non-FormData requests
         ...(!(options.body instanceof FormData) && {
           'Content-Type': 'application/json',
@@ -198,6 +201,7 @@ export class AuthService {
           headers: {
             ...options.headers,
             Authorization: `Bearer ${newToken}`,
+            'ngrok-skip-browser-warning': 'true',
             // Only set Content-Type for non-FormData requests
             ...(!(options.body instanceof FormData) && {
               'Content-Type': 'application/json',

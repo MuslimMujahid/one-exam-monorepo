@@ -48,10 +48,10 @@ export function ExamInstructions({
                 <li>
                   • <strong>Questions:</strong> {examData.questions.length}
                 </li>
-                <li>
+                {/* <li>
                   • <strong>Time Limit Left:</strong> {examData.timeLimit}{' '}
                   minutes
-                </li>
+                </li> */}
                 <li>
                   • <strong>Total Points:</strong>{' '}
                   {examData.questions.reduce((sum, q) => sum + q.points, 0)}

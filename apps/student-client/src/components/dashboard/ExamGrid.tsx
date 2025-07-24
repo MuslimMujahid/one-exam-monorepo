@@ -10,13 +10,16 @@ interface ExamGridProps {
   activeExamSessions: Record<string, SessionSaveData | null>;
   submittedExamSessions: Record<string, SessionSaveData | null>;
   submittedExams: Record<string, boolean>;
+  offlineSubmissions: Record<string, boolean>;
   getExamStatus: (exam: Exam) => ExamStatus;
   canTakeExam: (exam: Exam) => boolean;
   getFormattedTimeUntilStart: (exam: Exam) => string;
   getFormattedTimeUntilEnd: (exam: Exam) => string;
   onDownloadExam: (examCode: string) => void;
   onTakeExam: (examId: string) => void;
+  onSubmitOfflineExam: (examId: string) => void;
   isOnline?: boolean;
+  isSubmittingOffline?: boolean;
 }
 
 export function ExamGrid({
@@ -26,13 +29,16 @@ export function ExamGrid({
   activeExamSessions,
   submittedExamSessions,
   submittedExams,
+  offlineSubmissions,
   getExamStatus,
   canTakeExam,
   getFormattedTimeUntilStart,
   getFormattedTimeUntilEnd,
   onDownloadExam,
   onTakeExam,
+  onSubmitOfflineExam,
   isOnline = true,
+  isSubmittingOffline = false,
 }: ExamGridProps) {
   if (exams.length === 0) {
     return (
@@ -57,6 +63,7 @@ export function ExamGrid({
         const status = getExamStatus(exam);
         const canTake = canTakeExam(exam);
         const isSubmitted = submittedExams[exam.id] || false;
+        const hasOfflineSubmission = offlineSubmissions[exam.id] || false;
 
         return (
           <ExamCard
@@ -69,6 +76,7 @@ export function ExamGrid({
             activeSession={activeExamSessions[exam.id] || null}
             submittedSession={submittedExamSessions[exam.id] || null}
             isSubmitted={isSubmitted}
+            hasOfflineSubmission={hasOfflineSubmission}
             timeUntilStart={
               status.text === 'Scheduled'
                 ? getFormattedTimeUntilStart(exam)
@@ -81,7 +89,9 @@ export function ExamGrid({
             }
             onDownload={onDownloadExam}
             onTakeExam={onTakeExam}
+            onSubmitOfflineExam={onSubmitOfflineExam}
             isOnline={isOnline}
+            isSubmittingOffline={isSubmittingOffline}
           />
         );
       })}

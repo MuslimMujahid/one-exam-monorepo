@@ -14,9 +14,12 @@ interface ExamCardProps {
   activeSession?: SessionSaveData | null;
   submittedSession?: SessionSaveData | null;
   isSubmitted: boolean;
+  hasOfflineSubmission?: boolean;
   onDownload: (examCode: string) => void;
   onTakeExam: (examId: string) => void;
+  onSubmitOfflineExam?: (examId: string) => void;
   isOnline?: boolean;
+  isSubmittingOffline?: boolean;
 }
 
 export function ExamCard({
@@ -30,9 +33,12 @@ export function ExamCard({
   activeSession,
   submittedSession,
   isSubmitted,
+  hasOfflineSubmission = false,
   onDownload,
   onTakeExam,
+  onSubmitOfflineExam,
   isOnline = true,
+  isSubmittingOffline = false,
 }: ExamCardProps) {
   return (
     <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow">
@@ -97,12 +103,20 @@ export function ExamCard({
                 In Progress
               </span>
             )}
-            {isSubmitted && (
+            {isSubmitted && !hasOfflineSubmission && (
               <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                 <span role="img" aria-label="Checkmark">
                   ✅
                 </span>{' '}
                 Completed
+              </span>
+            )}
+            {hasOfflineSubmission && (
+              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                <span role="img" aria-label="Upload">
+                  📤
+                </span>{' '}
+                Ready to Submit
               </span>
             )}
           </div>
@@ -127,6 +141,42 @@ export function ExamCard({
                 : 'Download'}
             </Button>
           )}
+
+          {/* Submit Offline Exam Button - Show when exam has offline submissions */}
+          {hasOfflineSubmission && onSubmitOfflineExam && (
+            <Button
+              onClick={
+                isOnline ? () => onSubmitOfflineExam(exam.id) : undefined
+              }
+              className={`w-full text-white ${
+                isOnline
+                  ? 'bg-yellow-600 hover:bg-yellow-700'
+                  : 'bg-gray-400 cursor-not-allowed'
+              }`}
+              disabled={isSubmittingOffline || !isOnline}
+            >
+              {isSubmittingOffline ? (
+                <>
+                  <span
+                    className="animate-spin mr-2"
+                    role="img"
+                    aria-label="Loading"
+                  >
+                    ⏳
+                  </span>
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <span role="img" aria-label="Upload" className="mr-2">
+                    📤
+                  </span>
+                  {isOnline ? 'Submit Answers' : 'Submit Answers (Offline)'}
+                </>
+              )}
+            </Button>
+          )}
+
           {canTakeExam && isDownloaded && !isSubmitted ? (
             <Button
               className={`w-full text-white ${
@@ -138,7 +188,7 @@ export function ExamCard({
             >
               {activeSession ? 'Resume Exam' : 'Take Exam'}
             </Button>
-          ) : isSubmitted ? (
+          ) : isSubmitted && !hasOfflineSubmission ? (
             <Button
               disabled
               className="w-full bg-green-100 text-green-700 cursor-not-allowed border border-green-300"
@@ -148,7 +198,7 @@ export function ExamCard({
               </span>{' '}
               Exam Completed
             </Button>
-          ) : (
+          ) : !hasOfflineSubmission && !canTakeExam ? (
             <Button
               disabled
               className="w-full bg-gray-300 text-gray-500 cursor-not-allowed"
@@ -161,7 +211,7 @@ export function ExamCard({
                 ? 'Download Required'
                 : 'Offline Mode'}
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

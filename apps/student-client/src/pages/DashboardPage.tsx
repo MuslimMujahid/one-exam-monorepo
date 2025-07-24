@@ -11,6 +11,10 @@ import {
 import { useExamUtils } from '../hooks/useExamUtils';
 import { useExamSessions } from '../hooks/useExamSessions';
 import {
+  useStoredSubmissions,
+  useSubmitOfflineExam,
+} from '../hooks/useOfflineSubmissions';
+import {
   DashboardHeader,
   ExamStatsGrid,
   ExamGrid,
@@ -35,10 +39,14 @@ export function DashboardPage() {
 
   const joinExamMutation = useJoinExam();
   const downloadExamMutation = useDownloadExam();
+  const submitOfflineExamMutation = useSubmitOfflineExam(user?.id);
 
   // Check which exams are already downloaded
   const { data: downloadedExams = {}, refetch: refetchDownloadedStatus } =
     useDownloadedExams(exams);
+
+  // Get offline submissions data
+  const { data: storedSubmissions = [] } = useStoredSubmissions();
 
   const {
     getExamStatus,
@@ -77,6 +85,30 @@ export function DashboardPage() {
     getSubmittedSessionForExam,
     isExamSubmitted,
   ]);
+
+  // Create a map of offline submissions for each exam
+  const offlineSubmissionsMap = useMemo(() => {
+    const map: Record<string, boolean> = {};
+
+    if (!user?.id) return map;
+
+    exams.forEach((exam) => {
+      // Find sessions for this exam that have been submitted offline
+      const submittedSession = examSessions.submittedSessions[exam.id];
+
+      if (submittedSession) {
+        // Check if there are stored submissions for this session
+        const hasOfflineSubmission = storedSubmissions.some(
+          (submission) => submission.sessionId === submittedSession.sessionId
+        );
+        map[exam.id] = hasOfflineSubmission;
+      } else {
+        map[exam.id] = false;
+      }
+    });
+
+    return map;
+  }, [exams, storedSubmissions, user?.id, examSessions.submittedSessions]);
 
   // Join exam modal state
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -182,6 +214,37 @@ export function DashboardPage() {
     }
   };
 
+  const handleSubmitOfflineExam = async (examId: string) => {
+    const exam = exams.find((e) => e.id === examId);
+    const submittedSession = examSessions.submittedSessions[examId];
+
+    if (!exam || !submittedSession || !user?.id) {
+      console.error('Exam, session, or user not found for offline submission');
+      return;
+    }
+
+    try {
+      await submitOfflineExamMutation.mutateAsync({
+        examId: exam.id,
+        examCode: exam.examCode,
+        examStartTime: submittedSession.examStartedAt,
+        examEndTime: new Date().toISOString(), // Use current time as end time
+        clientInfo: {
+          userAgent: navigator.userAgent,
+          platform: window.electron?.platform || navigator.platform,
+          deviceId: 'offline-device', // Could be enhanced with actual device ID
+        },
+      });
+
+      // Show success message
+      setDownloadSuccess('Exam answers submitted successfully!');
+      setTimeout(() => setDownloadSuccess(''), 3000);
+    } catch (error) {
+      console.error('Failed to submit offline exam:', error);
+      // Error is already handled by the mutation's onError
+    }
+  };
+
   // Calculate stats for the stats grid
   const availableExamsCount = exams.filter((e) => canTakeExam(e)).length;
   const upcomingExamsCount = exams.filter(
@@ -249,13 +312,16 @@ export function DashboardPage() {
               activeExamSessions={examSessions.activeSessions}
               submittedExamSessions={examSessions.submittedSessions}
               submittedExams={examSessions.submittedExams}
+              offlineSubmissions={offlineSubmissionsMap}
               getExamStatus={getExamStatus}
               canTakeExam={canTakeExam}
               getFormattedTimeUntilStart={getFormattedTimeUntilStart}
               getFormattedTimeUntilEnd={getFormattedTimeUntilEnd}
               onDownloadExam={handleDownloadExam}
               onTakeExam={handleTakeExam}
+              onSubmitOfflineExam={handleSubmitOfflineExam}
               isOnline={isOnline && !hasConnectionIssues}
+              isSubmittingOffline={submitOfflineExamMutation.isPending}
             />
           </div>
 

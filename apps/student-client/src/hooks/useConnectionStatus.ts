@@ -63,25 +63,66 @@ export function useConnectionStatus(): ConnectionStatus {
     setIsChecking(true);
 
     try {
-      const result = await checkServerHealth(10000);
+      const result = await checkServerHealth(8000);
 
       if (result.isReachable) {
         setServerReachable(true);
         setLastServerCheck(new Date());
       } else {
         setServerReachable(false, result.error || 'Server health check failed');
+
+        // If server check failed, also verify network connectivity
+        // This catches cases where network went down but navigator.onLine is stale
+        if (
+          result.error?.includes('fetch') ||
+          result.error?.includes('network') ||
+          result.error?.includes('timeout')
+        ) {
+          try {
+            await fetch('https://1.1.1.1/', {
+              method: 'HEAD',
+              mode: 'no-cors',
+              cache: 'no-cache',
+              signal: AbortSignal.timeout(3000),
+            });
+          } catch {
+            console.log('Network connectivity lost during server check');
+            setNetworkOnline(false);
+          }
+        }
       }
     } catch (error) {
+      let errorMessage = 'Failed to reach server';
       if (error instanceof Error) {
-        setServerReachable(false, error.message);
-      } else {
-        setServerReachable(false, 'Failed to reach server');
+        errorMessage = error.message;
+
+        // If it's a network error, also check if we actually lost internet
+        if (
+          error.message.includes('fetch') ||
+          error.message.includes('network') ||
+          error.name === 'TypeError'
+        ) {
+          try {
+            await fetch('https://1.1.1.1/', {
+              method: 'HEAD',
+              mode: 'no-cors',
+              cache: 'no-cache',
+              signal: AbortSignal.timeout(3000),
+            });
+          } catch {
+            console.log('Network connectivity lost, updating network status');
+            setNetworkOnline(false);
+            errorMessage = 'Network connection lost';
+          }
+        }
       }
+
+      setServerReachable(false, errorMessage);
     } finally {
       isCheckingRef.current = false;
       setIsChecking(false);
     }
-  }, [setServerReachable, setLastServerCheck, setIsChecking]);
+  }, [setServerReachable, setLastServerCheck, setIsChecking, setNetworkOnline]);
 
   /**
    * Check server connection with an authenticated endpoint as fallback
@@ -128,17 +169,44 @@ export function useConnectionStatus(): ConnectionStatus {
   }, [setServerReachable, setLastServerCheck, setIsChecking]);
 
   /**
-   * Handle network status changes
+   * Handle network status changes with actual connectivity verification
    */
-  const handleNetworkChange = useCallback(() => {
-    const newNetworkStatus = navigator.onLine;
-    setNetworkOnline(newNetworkStatus);
+  const handleNetworkChange = useCallback(async () => {
+    const navigatorOnline = navigator.onLine;
+    console.log('Network change detected:', navigatorOnline);
 
-    if (newNetworkStatus) {
+    // Always do an actual connectivity test, don't just trust navigator.onLine
+    let actuallyOnline = navigatorOnline;
+
+    if (navigatorOnline) {
+      // Navigator says we're online, but let's verify with a real test
+      try {
+        // Try to reach a reliable external service with a quick timeout
+        await fetch('https://1.1.1.1/', {
+          method: 'HEAD',
+          mode: 'no-cors',
+          cache: 'no-cache',
+          signal: AbortSignal.timeout(3000),
+        });
+        actuallyOnline = true;
+      } catch {
+        // If we can't reach a basic external service, we're probably offline
+        actuallyOnline = false;
+        console.log('Connectivity test failed, treating as offline');
+      }
+    } else {
+      // Navigator says we're offline, trust it
+      actuallyOnline = false;
+    }
+
+    setNetworkOnline(actuallyOnline);
+
+    if (actuallyOnline) {
       // Network came back online, check server immediately
       checkServerConnection();
     } else {
       // Network went offline - this is already handled by setNetworkOnline
+      console.log('Network is offline, marking server as unreachable');
     }
   }, [checkServerConnection, setNetworkOnline]);
 
@@ -151,21 +219,35 @@ export function useConnectionStatus(): ConnectionStatus {
       clearInterval(intervalRef.current);
     }
 
-    // Check server connectivity every 30 seconds
-    intervalRef.current = setInterval(() => {
-      if (navigator.onLine) {
+    // Check both network and server connectivity every 15 seconds
+    intervalRef.current = setInterval(async () => {
+      // First verify actual network connectivity
+      let networkOnline = navigator.onLine;
+      if (networkOnline) {
+        try {
+          await fetch('https://1.1.1.1/', {
+            method: 'HEAD',
+            mode: 'no-cors',
+            cache: 'no-cache',
+            signal: AbortSignal.timeout(2000),
+          });
+        } catch {
+          networkOnline = false;
+          console.log('Periodic connectivity test failed');
+        }
+      }
+
+      setNetworkOnline(networkOnline);
+
+      // Only check server if network is actually online
+      if (networkOnline) {
         checkServerConnection();
       }
-    }, 30000);
+    }, 15000);
 
-    // Initial check
-    if (navigator.onLine) {
-      // Delay initial check slightly to avoid race conditions
-      timeoutRef.current = setTimeout(() => {
-        checkServerConnection();
-      }, 1000);
-    }
-  }, [checkServerConnection]);
+    // Initial check - do network verification first
+    handleNetworkChange();
+  }, [checkServerConnection, setNetworkOnline, handleNetworkChange]);
 
   /**
    * Enhanced server check that tries multiple endpoints

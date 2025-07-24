@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { useConnectionStatus } from './useConnectionStatus';
 import { useExamData } from './useExamData';
 import { useExamState } from './useExamState';
 import { useExamSession } from './useExamSession';
@@ -14,7 +15,11 @@ interface UseExamPageOptions {
 export function useExamPage({ examId }: UseExamPageOptions) {
   const { user } = useAuth();
 
-  // Dialog states
+  // Connection status
+  const { isOnline, isNetworkOnline, isServerReachable, hasConnectionIssues } =
+    useConnectionStatus();
+
+  // Dialog states  
   const [showFinalSubmitDialog, setShowFinalSubmitDialog] = useState(false);
   const [showSubmissionManager, setShowSubmissionManager] = useState(false);
 
@@ -280,6 +285,12 @@ export function useExamPage({ examId }: UseExamPageOptions) {
     error: error || session.sessionError, // Include session errors with exam data errors
     isElectronAvailable,
     user,
+
+    // Connection status
+    isOnline,
+    isNetworkOnline,
+    isServerReachable,
+    hasConnectionIssues,
 
     // Exam state
     ...examState,

@@ -21,7 +21,12 @@ async function bootstrap() {
     origin: true, // You can specify specific origins in production
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'ngrok-skip-browser-warning',
+    ],
     exposedHeaders: ['Authorization'],
   });
 

@@ -42,19 +42,21 @@ export function SubmissionManager({
   const handleSubmitExam = async () => {
     setIsSubmitting(true);
     try {
-      await submitExamMutation.mutateAsync({
-        examId,
-        examCode,
-        examStartTime,
-        examEndTime,
-        clientInfo: {
-          userAgent: navigator.userAgent,
-          platform: window.electron?.platform || 'web',
-          deviceId: 'student-client',
-        },
-      });
+      if (isOnline) {
+        await submitExamMutation.mutateAsync({
+          examId,
+          examCode,
+          examStartTime,
+          examEndTime,
+          clientInfo: {
+            userAgent: navigator.userAgent,
+            platform: window.electron?.platform || 'web',
+            deviceId: 'student-client',
+          },
+        });
 
-      toast.success('Exam submitted successfully!');
+        toast.success('Exam submitted successfully!');
+      }
       onSubmissionComplete?.();
     } catch (error) {
       console.error('Exam submission failed:', error);
@@ -93,25 +95,6 @@ export function SubmissionManager({
           </div>
         </div>
 
-        {/* Connection Status */}
-        <div className="mb-4 p-3 rounded-lg bg-gray-50">
-          <div className="flex items-center">
-            <div
-              className={`w-3 h-3 rounded-full mr-2 ${
-                isOnline ? 'bg-green-500' : 'bg-red-500'
-              }`}
-            />
-            <span className="text-sm text-gray-700">
-              {isOnline ? 'Connected to Internet' : 'Offline Mode'}
-            </span>
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            {isOnline
-              ? 'Your answers will be uploaded directly to the server'
-              : 'Your answers are saved locally and will be submitted when you regain internet connection'}
-          </p>
-        </div>
-
         {/* Submission Note */}
         <div className="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <div className="flex">
@@ -148,7 +131,7 @@ export function SubmissionManager({
           </Button>
           <Button
             onClick={handleSubmitExam}
-            disabled={isPending || !isOnline}
+            disabled={isPending}
             className="px-8 py-3 text-lg"
             size="lg"
           >
@@ -156,16 +139,9 @@ export function SubmissionManager({
               ? 'Submitting...'
               : isOnline
               ? 'Submit Exam'
-              : 'Cannot Submit (Offline)'}
+              : 'Submit (Offline)'}
           </Button>
         </div>
-
-        {!isOnline && (
-          <p className="text-center text-sm text-red-600 mt-2">
-            Please connect to the internet to submit your exam. Your answers are
-            safely stored locally.
-          </p>
-        )}
       </div>
     </div>
   );
