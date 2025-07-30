@@ -375,24 +375,6 @@ ipcMain.handle(
   }
 );
 
-// Test submission encryption process
-ipcMain.handle('test-submission-encryption', async () => {
-  try {
-    const { SubmissionTestUtils } = await import(
-      '../lib/submission-test-utils'
-    );
-    console.log('Running submission encryption tests...');
-    const result = SubmissionTestUtils.runAllTests();
-    return { success: result, message: 'Tests completed' };
-  } catch (error) {
-    console.error('Failed to run submission tests:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Unknown test error',
-    };
-  }
-});
-
 // Create new exam session
 ipcMain.handle(
   'create-exam-session',
